@@ -1,0 +1,41 @@
+using Test
+using LinearAlgebra
+using Logging
+using Random
+using TensorOperations
+using FiniteMPSAlgorithms
+# not exported: access the settings module via `using FiniteMPSAlgorithms.Defaults`
+using FiniteMPSAlgorithms.Defaults
+# disambiguate from LinearAlgebra's SVD/QR/LQ factorization objects
+using FiniteMPSAlgorithms: SVD, QR, QRpos, LQ, LQpos, SDD, Polar, max_bonddims, l_LL, r_RR,
+                           PauliTerm
+
+include("helpers.jl")
+
+@testset verbose = true "FiniteMPSAlgorithms" begin
+	@testset "tensorops" begin
+		include("tensorops/linalg.jl")
+		include("tensorops/truncation.jl")
+	end
+	@testset "states" begin
+		include("states/structures.jl")
+		include("states/observables.jl")
+	end
+	@testset "operators" begin
+		include("operators/mpo.jl")
+		include("operators/longrangeop.jl")
+		include("operators/sparsempo.jl")
+		include("operators/vectorize.jl")
+		include("operators/models.jl")
+		include("operators/nonuniform.jl")
+	end
+	@testset "algorithms" begin
+		include("algorithms/arithmetics.jl")
+		include("algorithms/dmrg.jl")
+		include("algorithms/timeevo.jl")
+		include("algorithms/tebd.jl")
+		include("algorithms/seq2seq.jl")
+		include("algorithms/sampling.jl")
+		include("algorithms/experimental.jl")
+	end
+end

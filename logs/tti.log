@@ -1,0 +1,12 @@
+┌ Warning: can not find a good approximation with L=3, n=20, atol=1.0e-12, rtol=4.134493430083079e-15, return with error 0.00013012700242870075
+└ @ ExpExp ~/Agent-workspace/gc-ask/gtempo-shift/vendor/ExpExp/src/expansion.jl:118
+┌ Warning: can not find a good approximation with L=3, n=20, atol=1.0e-12, rtol=4.134493430083079e-15, return with error 0.00013012700242870075
+└ @ ExpExp ~/Agent-workspace/gc-ask/gtempo-shift/vendor/ExpExp/src/expansion.jl:118
+┌ Warning: can not find a good approximation with L=4, n=20, atol=1.0e-12, rtol=2.68717378211462e-15, return with error 0.00232716075969477
+└ @ ExpExp ~/Agent-workspace/gc-ask/gtempo-shift/vendor/ExpExp/src/expansion.jl:118
+┌ Warning: can not find a good approximation with L=4, n=20, atol=1.0e-12, rtol=2.68717378211462e-15, return with error 0.00232716075969477
+└ @ ExpExp ~/Agent-workspace/gc-ask/gtempo-shift/vendor/ExpExp/src/expansion.jl:118
+┌ Warning: can not find a good approximation with L=8, n=20, atol=1.0e-12, rtol=9.506534364050263e-16, return with error 0.0008892548631467246
+└ @ ExpExp ~/Agent-workspace/gc-ask/gtempo-shift/vendor/ExpExp/src/expansion.jl:118
+┌ Warning: can not find a good approximation with L=8, n=20, atol=1.0e-12, rtol=9.506534364050263e-16, return with error 0.0008892548631467246
+└ @ ExpExp ~/Agent-workspace/gc-ask/gtempo-shift/vendor/ExpExp/src/expansion.jl:118

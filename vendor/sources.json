@@ -1,0 +1,46 @@
+[
+  {
+    "name": "ExpExp",
+    "url": "https://github.com/guochu/ExpExp.git",
+    "commit": "8c1c69766c3289d89b3006156464790faedc2aa5",
+    "licenses": []
+  },
+  {
+    "name": "FiniteMPSAlgorithms",
+    "url": "https://github.com/guochu/FiniteMPSAlgorithms.git",
+    "commit": "ab117c6e09182699f450eb250224bebe0e928c9b",
+    "licenses": []
+  },
+  {
+    "name": "GTEMPO",
+    "url": "https://github.com/guochu/GTEMPO.git",
+    "commit": "2ef6a2bfc5d01be5532ecfac517eb1f2b870f622",
+    "licenses": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "ImpurityModelBase",
+    "url": "https://github.com/guochu/ImpurityModelBase.git",
+    "commit": "8123f7be5a2a2e3684a9a739d83bc03dac144cd4",
+    "licenses": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "QuAPI",
+    "url": "https://github.com/guochu/QuAPI.git",
+    "commit": "16f30252df564dcad934aeee3a788ff02b2ebccb",
+    "licenses": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "Z2Tensors",
+    "url": "https://github.com/guochu/Z2Tensors.git",
+    "commit": "8cf8bd6fbc631eae491222e45ef9470698a09ba4",
+    "licenses": [
+      "LICENSE"
+    ]
+  }
+]

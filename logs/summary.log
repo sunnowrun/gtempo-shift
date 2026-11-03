@@ -1,0 +1,331 @@
+{
+  "convergence": {
+    "real": {
+      "raw": {
+        "p_all": 1.0850645058931776,
+        "p_finest_two": 1.0411009447615276,
+        "N": [
+          32,
+          16,
+          8,
+          4
+        ],
+        "relative_errors": [
+          0.0014845974861892937,
+          0.0030550008381642515,
+          0.00644731914338343,
+          0.014199595980811539
+        ]
+      },
+      "vertex": {
+        "p_all": 1.036437113790082,
+        "p_finest_two": 1.0226153576250558,
+        "N": [
+          32,
+          16,
+          8,
+          4
+        ],
+        "relative_errors": [
+          5.979286555731262e-05,
+          0.00012147509966063926,
+          0.0002494000137433963,
+          0.0005158322575699334
+        ]
+      },
+      "raw_richardson": {
+        "p_all": 1.987400793599865,
+        "p_finest_two": 1.9922456561646742,
+        "N": [
+          16,
+          8,
+          4
+        ],
+        "relative_errors": [
+          7.571309427212405e-05,
+          0.00030122894218221886,
+          0.0011904344872355438
+        ]
+      },
+      "vertex_richardson": {
+        "p_all": 2.0278132554466075,
+        "p_finest_two": 2.0198705206767325,
+        "N": [
+          16,
+          8,
+          4
+        ],
+        "relative_errors": [
+          4.461123203007412e-06,
+          1.809196885379392e-05,
+          7.41838636126187e-05
+        ]
+      }
+    },
+    "imag": {
+      "raw": {
+        "p_all": 1.1834014699894504,
+        "p_finest_two": 1.0909922435023283,
+        "N": [
+          64,
+          32,
+          16,
+          8
+        ],
+        "relative_errors": [
+          5.1012927727145186e-05,
+          0.00010866799135903524,
+          0.00024426615537117543,
+          0.0005996403210854753
+        ]
+      },
+      "vertex": {
+        "p_all": 1.0166451099434484,
+        "p_finest_two": 1.0097324505194984,
+        "N": [
+          64,
+          32,
+          16,
+          8
+        ],
+        "relative_errors": [
+          0.002056966141687052,
+          0.00414177877636239,
+          0.008379839338515136,
+          0.017035169348034524
+        ]
+      },
+      "raw_richardson": {
+        "p_all": 2.0132487169265376,
+        "p_finest_two": 2.0076099109106966,
+        "N": [
+          32,
+          16,
+          8
+        ],
+        "relative_errors": [
+          7.262374351516635e-06,
+          2.9203132194145226e-05,
+          0.00011835187336271511
+        ]
+      },
+      "vertex_richardson": {
+        "p_all": 1.9707995232883202,
+        "p_finest_two": 1.9805706618358532,
+        "N": [
+          32,
+          16,
+          8
+        ],
+        "relative_errors": [
+          0.00011052697229745885,
+          0.00043619376270970597,
+          0.0016982742211619805
+        ]
+      }
+    },
+    "mixed": {
+      "raw": {
+        "p_all": 0.9750685924347632,
+        "p_finest_two": 0.9890063326287845,
+        "N": [
+          32,
+          16,
+          8,
+          4
+        ],
+        "relative_errors": [
+          0.0009121022430767297,
+          0.001810356458820661,
+          0.003566416175846626,
+          0.006923151932522795
+        ]
+      },
+      "vertex": {
+        "p_all": 0.1155165912827129,
+        "p_finest_two": 0.03307219083454065,
+        "N": [
+          32,
+          16,
+          8,
+          4
+        ],
+        "relative_errors": [
+          0.055794914879321415,
+          0.057088724617671296,
+          0.06085739525140734,
+          0.07132692084895248
+        ]
+      },
+      "raw_richardson": {
+        "p_all": 1.98113736972366,
+        "p_finest_two": 1.98525784355593,
+        "N": [
+          16,
+          8,
+          4
+        ],
+        "relative_errors": [
+          1.8314234261955494e-05,
+          7.251217385189573e-05,
+          0.00028546463478556296
+        ]
+      },
+      "vertex_richardson": {
+        "p_all": 0.037010810881120924,
+        "p_finest_two": 0.01831483847694815,
+        "N": [
+          16,
+          8,
+          4
+        ],
+        "relative_errors": [
+          0.05546776768753775,
+          0.056176412832453476,
+          0.05838797540782768
+        ]
+      }
+    }
+  },
+  "kernel_coupling_orders": {
+    "real_raw": 1.9998074741345042,
+    "real_vertex": 3.999936233495478,
+    "imag_raw": 2.0016960318837675,
+    "imag_vertex": 4.000233838023681
+  },
+  "python": "3.11.8",
+  "numpy": "1.26.4",
+  "matplotlib": "3.8.0",
+  "link_if": {
+    "0.0": {
+      "order_in_N": -4.181283138091789,
+      "max_split_mismatch": 1.638084156599567e-11,
+      "max_trace_error": 1.2311419964964227e-11
+    },
+    "0.7": {
+      "order_in_N": 2.024374462161991,
+      "max_split_mismatch": 8.775068734048658e-12,
+      "max_trace_error": 4.3162228778571634e-12
+    }
+  },
+  "strang_link_if": {
+    "order_in_step": 2.0243744621473527,
+    "max_split_mismatch": 8.775443938246432e-12,
+    "max_trace_error": 4.315556810315407e-12,
+    "relative_errors": [
+      0.00014395209649011633,
+      3.4969710569087264e-05,
+      8.61251921028546e-06,
+      2.136717730336896e-06
+    ]
+  },
+  "tti_kernel_audit": [
+    {
+      "N": "3",
+      "method": "PartialIF",
+      "relative_kernel_error": "2.7680962875803534e-15",
+      "max_abs_error": "3.3828850430471206e-17",
+      "if_bond": "32"
+    },
+    {
+      "N": "3",
+      "method": "ExactTTIIF",
+      "relative_kernel_error": "0.970997800517053",
+      "max_abs_error": "0.00873688763752968",
+      "if_bond": "111"
+    },
+    {
+      "N": "4",
+      "method": "PartialIF",
+      "relative_kernel_error": "4.700401764850381e-15",
+      "max_abs_error": "4.027690683144362e-17",
+      "if_bond": "32"
+    },
+    {
+      "N": "4",
+      "method": "ExactTTIIF",
+      "relative_kernel_error": "0.8606379402985306",
+      "max_abs_error": "0.004951770071537727",
+      "if_bond": "119"
+    },
+    {
+      "N": "8",
+      "method": "PartialIF",
+      "relative_kernel_error": "1.8706629528006034e-12",
+      "max_abs_error": "1.2614257840685829e-14",
+      "if_bond": "31"
+    },
+    {
+      "N": "8",
+      "method": "ExactTTIIF",
+      "relative_kernel_error": "0.825495435002336",
+      "max_abs_error": "0.001246977452411281",
+      "if_bond": "134"
+    }
+  ],
+  "repaired_tti": [
+    {
+      "N": "3",
+      "stage": "shifted_tail",
+      "relative_kernel_error": "0.501827338619189",
+      "max_abs_error": "0.004774101789642469",
+      "relative_if_error": "0.013672915320118618",
+      "off_contact_max_error": "4.024642548747994e-15",
+      "sampled_if_coeff_max_error": "0.004774101789642469"
+    },
+    {
+      "N": "3",
+      "stage": "tail_plus_exact_local_and_boundary",
+      "relative_kernel_error": "4.635188884359963e-13",
+      "max_abs_error": "6.839627019602846e-15",
+      "relative_if_error": "0.0",
+      "off_contact_max_error": "4.024642548747994e-15",
+      "sampled_if_coeff_max_error": "4.034116652813146e-15"
+    },
+    {
+      "N": "4",
+      "stage": "shifted_tail",
+      "relative_kernel_error": "0.4259864947220215",
+      "max_abs_error": "0.0026871737821146393",
+      "relative_if_error": "0.008881687336959428",
+      "off_contact_max_error": "2.097733964945174e-16",
+      "sampled_if_coeff_max_error": "0.002687173782114629"
+    },
+    {
+      "N": "4",
+      "stage": "tail_plus_exact_local_and_boundary",
+      "relative_kernel_error": "7.807617071417976e-13",
+      "max_abs_error": "7.819113835124397e-15",
+      "relative_if_error": "0.0",
+      "off_contact_max_error": "2.097733964945174e-16",
+      "sampled_if_coeff_max_error": "4.556490086665134e-15"
+    },
+    {
+      "N": "8",
+      "stage": "shifted_tail",
+      "relative_kernel_error": "0.29280658710337093",
+      "max_abs_error": "0.000672213491444039",
+      "relative_if_error": "0.0031407681675414793",
+      "off_contact_max_error": "1.7452754274332426e-14",
+      "sampled_if_coeff_max_error": "0.000672213491444039"
+    },
+    {
+      "N": "8",
+      "stage": "tail_plus_exact_local_and_boundary",
+      "relative_kernel_error": "1.267506417828598e-11",
+      "max_abs_error": "6.100335763592206e-14",
+      "relative_if_error": "0.0",
+      "off_contact_max_error": "1.7452754274332426e-14",
+      "sampled_if_coeff_max_error": "2.1095029084204712e-14"
+    }
+  ],
+  "figure_provenance": {
+    "source": "convergence.csv",
+    "error": "norm(g-g_reference)/norm(g_reference), all node samples included",
+    "richardson": "2*g_fine_on_coarse_nodes - g_coarse, independently normalized",
+    "uncertainty": "deterministic computation; no statistical error bars",
+    "log_policy": "all plotted source errors are strictly positive",
+    "alt_text": "Three panels compare raw, shifted, and Richardson-extrapolated Green functions. The mixed shifted scheme approaches a nonzero error; other trends are in summary.json.",
+    "scope": "Single spinless level, one bath mode, beta=1, impurity energy=0.7, bath energy=1, squared coupling=0.5."
+  }
+}

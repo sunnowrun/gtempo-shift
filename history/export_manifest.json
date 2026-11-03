@@ -1,0 +1,23 @@
+{
+  "session_id": "01a1a159-dcf7-70f1-9fae-e25ce4c2dbb3",
+  "source_rollout_sha256": "0552bced4bed9f8253727ebbd7cd02bcf0b4f3971c2642f3f73c56831383dc51",
+  "snapshot_cutoff_utc": "2026-11-03T15:28:53.943Z",
+  "exported_at_utc": "2026-11-03T15:28:54.332732+00:00",
+  "message_count": 48,
+  "tool_record_count": 435,
+  "excluded_response_item_counts": {
+    "additional_tools": 1,
+    "internal_message": 6,
+    "session_internal_tool_output": 16,
+    "reasoning": 222
+  },
+  "credential_redactions_by_rule": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0
+  },
+  "scope": "Current project session only; user-visible messages and redacted tool records; no internal reasoning or instructions."
+}

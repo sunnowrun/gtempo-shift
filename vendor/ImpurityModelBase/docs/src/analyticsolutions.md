@@ -1,0 +1,517 @@
+# 解析解
+
+本模块收录若干存在精确解析解的杂质/输运模型。它们有两个用途：
+
+1. **物理研究**：直接研究这些模型的平衡/非平衡性质；
+2. **数值基准**：为 [精确对角化](@ref) 的数值结果提供交叉验证（测试套件即以此为
+   主要目的）。
+
+所有谱相关的函数都接受 `AbstractBoundedFunction`（或直接接受浴对象，
+自动提取其谱与热力学参数）。以下各节给出每个模型的哈密顿量与解析解的显式公式；
+所有公式均与实现逐一对应。
+
+## 自由费米子
+
+单能级 ``\epsilon_d`` 上的自由费米子，热平衡态。本模块约定 ``\mu = -\epsilon_d``
+（化学势从杂质能级处起算），平均占据为
+
+```math
+\bar n = \frac{1}{1 + e^{-\beta\mu}}.
+```
+
+实时间 greater / lesser 格林函数（``G^>(t) = -i\langle \hat a(t)\hat a^\dagger\rangle``、
+``G^<(t) = i\langle \hat a^\dagger \hat a(t)\rangle``）：
+
+```math
+G^>(t) = -i\,(1-\bar n)\,e^{i\mu t}
+= \frac{-i\,e^{i\mu t}}{1+e^{\beta\mu}},
+\qquad
+G^<(t) = i\,\bar n\,e^{i\mu t}
+= \frac{i\,e^{i\mu t}}{1+e^{-\beta\mu}}.
+```
+
+```@docs
+freefermion_greater
+freefermion_lesser
+freefermion_Gt
+```
+
+`freefermion_Gt` 实现为两分量之和：
+
+```math
+G(t) = G^>(t) + G^<(t)
+= i\,\tanh\!\frac{\beta\mu}{2}\; e^{i\mu t}.
+```
+
+!!! note
+    推迟（retarded）组合是 ``G^> - G^< = -i e^{i\mu t}``（自由粒子传播子）；
+    若需要推迟格林函数请自行作差。
+
+虚时间（Matsubara）格林函数，``0 \le \tau \le \beta``：
+
+```math
+G(\tau) = e^{\mu\tau}\,(1-\bar n),
+```
+
+满足反周期性质的包内约定 ``G(\beta) = 1 - G(0)``（与 `Giw_to_Gτ` 的末点约定一致）。
+
+```@docs
+freefermion_Gτ
+freefermion_occupation
+```
+
+## 相互作用费米子
+
+单轨道双自旋费米子 + Hubbard 型相互作用（精确可解，因为轨道只有一个）：
+
+```math
+H = \epsilon_d \sum_\sigma \hat n_\sigma
++ U\, \hat n_\uparrow \hat n_\downarrow
+= -\mu \sum_\sigma \hat n_\sigma + U\, \hat n_\uparrow \hat n_\downarrow .
+```
+
+四个 Fock 态的玻尔兹曼权重为 ``1,\ e^{\beta\mu},\ e^{\beta\mu},\ e^{\beta(2\mu-U)}``，
+配分函数 ``Z = 1 + 2e^{\beta\mu} + e^{\beta(2\mu-U)}``。实现中把分子分母同乘
+``e^{-\beta\mu}``，即分母取 ``e^{-\beta\mu} + 2 + e^{\beta(\mu-U)}`` 的形式：
+
+```math
+G(\tau) = \frac{e^{\mu\tau-\beta\mu} + e^{(\mu-U)\tau}}
+{e^{-\beta\mu} + 2 + e^{\beta(\mu-U)}},
+```
+
+```math
+G^>(t) = -i\,\frac{e^{i\mu t-\beta\mu} + e^{i(\mu-U)t}}
+{e^{-\beta\mu} + 2 + e^{\beta(\mu-U)}},
+\qquad
+G^<(t) = i\,\frac{e^{i\mu t} + e^{\beta(\mu-U)}\,e^{i(\mu-U)t}}
+{e^{-\beta\mu} + 2 + e^{\beta(\mu-U)}}.
+```
+
+```@docs
+fermion_greater
+fermion_lesser
+fermion_Gt
+fermion_Gτ
+```
+
+`fermion_Gt` 同样实现为 ``G^>(t) + G^<(t)``。
+
+## 自由玻色子
+
+频率 ``\omega`` 的单模自由玻色子，平均占据
+
+```math
+\bar n_B = \frac{1}{e^{\beta\omega} - 1}.
+```
+
+```math
+G^>(t) = -i\,(1+\bar n_B)\,e^{-i\omega t}
+= \frac{-i\,e^{-i\omega t}}{1-e^{-\beta\omega}},
+\qquad
+G^<(t) = i\,\bar n_B\,e^{-i\omega t}.
+```
+
+二者之和恰为推迟格林函数 ``G^>(t)+G^<(t) = -i e^{-i\omega t}``。
+虚时间轴（``0 \le \tau \le \beta``）：
+
+```math
+G(\tau) = -\,\frac{e^{-\omega\tau}}{1-e^{-\beta\omega}}
+= -(1+\bar n_B)\,e^{-\omega\tau}.
+```
+
+```@docs
+freeboson_greater
+freeboson_lesser
+freeboson_Gt
+freeboson_Gτ
+freeboson_occupation
+```
+
+## Toulouse 模型（解析解）
+
+Toulouse 模型（单费米杂质 + 平衡自由费米浴）严格可解：
+
+```math
+H = \epsilon_d\, d^\dagger d + \sum_k \epsilon_k\, c_k^\dagger c_k
++ \sum_k V_k \left( d^\dagger c_k + c_k^\dagger d \right).
+```
+
+杂质格林函数由 Dyson 方程给出（谱密度 ``J(\omega)=2\pi\sum_k|V_k|^2\delta(\omega-\epsilon_k)``）：
+
+```math
+G(\omega) = \frac{1}{\omega - \epsilon_d - \Delta(\omega)},
+\qquad
+\Delta(\omega) = \int \mathrm{d}\epsilon\, \frac{J(\epsilon)}{\omega - \epsilon + i\delta},
+```
+
+其中 ``\Delta`` 为混合函数（hybridization function），与谱密度的关系为
+``J(\omega) = -\mathrm{Im}\,\Delta(\omega)/\pi``。retarded 格林函数与温度无关。
+
+### 实频率 / 实时间
+
+实现中 ``\Delta`` 的频率轴以化学势为零点（``\omega + \mu - \epsilon``），而
+``G`` 的分母以 ``\omega - \epsilon_d`` 计：
+
+```math
+G(\omega) = \frac{1}{\omega + i\delta - \epsilon_d - \Delta(\omega)},
+\qquad
+\Delta(\omega) = \int \mathrm{d}\epsilon\, \frac{J(\epsilon)}{\omega + \mu - \epsilon + i\delta}.
+```
+
+`toulouse_Δw`（无 `μ` 版本）则直接计算 ``\Delta(\omega) = \int \mathrm{d}\epsilon\,
+J(\epsilon)/(\omega - \epsilon + i\delta)``。
+
+实时间格林函数由数值傅里叶变换给出——先减去自由粒子渐近项
+``1/(\omega+i\delta)`` 使被积函数收敛，其解析贡献 ``-i`` 单独补回：
+
+```math
+G(t) = \frac{1}{2\pi}\int_{\omega_{\min}}^{\omega_{\max}} \mathrm{d}\omega\,
+\left[ G(\omega) - \frac{1}{\omega+i\delta} \right] e^{-i\omega t} \;-\; i .
+```
+
+```@docs
+toulouse_Gw
+ImpurityModelBase.fermionic_toulouse_Gw
+ImpurityModelBase.bosonic_toulouse_Gw
+toulouse_Δw
+toulouse_Gt
+ImpurityModelBase.fermionic_toulouse_Gt
+ImpurityModelBase.bosonic_toulouse_Gt
+```
+
+### 虚频率 / 虚时间（Matsubara）
+
+Matsubara 频点 ``\omega_n = (2n-1)\pi/\beta``（费米子）：
+
+```math
+G(i\omega_n) = \frac{1}{i\omega_n - \epsilon_d - \Delta(i\omega_n)},
+\qquad
+\Delta(i\omega_n) = \int \mathrm{d}\epsilon\, \frac{J(\epsilon)}{i\omega_n - \epsilon}.
+```
+
+虚时间格林函数由 Matsubara 级数求和得到（同样减去 ``1/(i\omega_n)`` 的自由项）：
+
+```math
+G(\tau) = \frac{1}{2} - \frac{1}{\beta}\sum_{n=-n_{\max}}^{n_{\max}+1}
+\left[ G(i\omega_n) - \frac{1}{i\omega_n} \right] e^{-i\omega_n \tau}.
+```
+
+混合函数的虚时间表示（实现与测试的约定）：
+
+```math
+\Delta(\tau) = -\int \mathrm{d}\epsilon\, J(\epsilon)\,
+\left(1 + e^{-\beta\epsilon}\right) e^{\epsilon\tau}.
+```
+
+```@docs
+toulouse_Giw
+ImpurityModelBase.fermionic_toulouse_Giw
+ImpurityModelBase.bosonic_toulouse_Giw
+toulouse_Gτ
+ImpurityModelBase.fermionic_toulouse_Gτ
+ImpurityModelBase.bosonic_toulouse_Gτ
+toulouse_Δiw
+toulouse_Δτ
+```
+
+示例——计算 Toulouse 模型在 Matsubara 轴上的格林函数并与 ED 对比：
+
+```julia
+using ImpurityModelBase
+
+f = semicircular(1.0)
+β = 10.0
+giw = toulouse_Giw(f; β=β, ϵ_d=-0.5, μ=0.0)   # Matsubara 频点上的 G(iω_n)
+
+# ED 参考：离散化浴后对角化
+db = discretebath(Fermion, -1:0.02:1, f; β=β, μ=0.0)
+m = Toulouse(db, ϵ_d=-0.5)
+gτ_ed = toulouse_Gτ(m, range(0, β; length=100))
+```
+
+### 半圆浴的闭式解
+
+对半圆谱浴 ``J(\epsilon) = \frac{2}{\pi t^2}\sqrt{t^2-\epsilon^2}``（即 `semicircular(t)`，
+归一化、半带宽 ``t``），混合函数的希尔伯特变换有解析表达式，因此实频率、实时间、
+Matsubara 频率与虚时间四个格林函数**全部有闭式解**，无需任何数值积分或展宽参数。
+记 ``w`` 为（实频率轴上的）``w = \omega + \mu + i\delta`` 或（Matsubara 轴上的）
+``w = \mu + i\omega_n``，取分支 ``s(w) = \sqrt{w-t}\,\sqrt{w+t} \sim w``，则
+
+```math
+\Delta(w) = \frac{2\,(w - s(w))}{t^2}.
+```
+
+!!! warning
+    复平方根不能写成 ``\sqrt{w^2 - t^2}``：其主值分支在 ``\mathrm{Re}\,w < 0`` 时
+    给出错误的符号，必须用两个主值平方根之积 ``\sqrt{w-t}\,\sqrt{w+t}``。
+
+**实频率**（推迟格林函数，与温度无关）：
+
+```math
+G(\omega) = \frac{1}{\omega + i\delta - \epsilon_d - \Delta(\omega + \mu + i\delta)}.
+```
+
+**虚频率**（Matsubara，同样无需展宽）：
+
+```math
+G(i\omega_n) = \frac{1}{i\omega_n - \epsilon_d - \Delta(\mu + i\omega_n)}.
+```
+
+**实时间**（``\tau > 0``）。记 ``\tilde\epsilon = \epsilon_d + \mu``、
+``\gamma(\omega) = \sqrt{t^2 - \omega^2}``。推迟格林函数解析延拓到实轴的割线跃变给出
+单积分表示，外加可能存在的**束缚态极点**：
+
+```math
+G(\tau) = e^{i\mu\tau}\left[
+-i \sum_j Z_j\, e^{-ir_j\tau}
+- \frac{2i}{\pi}\int_{-t}^{t} \mathrm{d}\omega\,
+\frac{e^{-i\omega\tau}\,\gamma(\omega)}
+{\left|(\omega - \tilde\epsilon)\left(\omega + i\gamma(\omega)\right) - 2\right|^2}
+\right].
+```
+
+束缚态是带外实根（``|r_j| > t``），满足隐式方程
+
+```math
+(r_j - \tilde\epsilon)\left(r_j + \mathrm{sign}(r_j)\sqrt{r_j^2 - t^2}\right) = 2,
+\qquad
+Z_j = \frac{t^2}{t^2 - 2 + 2r_j/\sqrt{r_j^2 - t^2}},
+```
+
+最多有两个：能级远离带外（``|\tilde\epsilon| > t``）时一个；窄带（``t < \sqrt{2}``）时
+即使 ``\tilde\epsilon = 0`` 也存在一对粒子-空穴配对的束缚态。特例 ``\tilde\epsilon = 0,\ t = 2``
+（此时 ``G = \Delta``）还原为著名形式 ``G(\tau) = -i\theta(\tau)\,2J_1(t\tau)/(t\tau)``。
+求和规则 ``G(0^+) = -i`` 一般成立，且 ``G(\tau<0) = 0``（严格因果）。
+
+**虚时间**（有限 ``\beta`` 下无初等闭式，但谱表示给出精确的单积分表示）。以
+``k(x) = \dfrac{e^{-x(\tau - \beta/2)}}{2\cosh(x\beta/2)} = \dfrac{e^{-x\tau}}{1+e^{-\beta x}}``
+为数值稳定的费米核：
+
+```math
+G(\tau) = \sum_j Z_j\, k(r_j - \mu)
++ \int_{-t-\mu}^{t-\mu} \mathrm{d}\omega\,
+\frac{b(\omega)}{\pi\left[a(\omega)^2 + b(\omega)^2\right]}\, k(\omega),
+```
+
+其中 ``a(\omega) = \omega - \epsilon_d - 2(\omega+\mu)/t^2``、
+``b(\omega) = 2\gamma(\omega+\mu)/t^2``，``\tau`` 按反周期性 ``G(\tau+\beta) = -G(\tau)``
+约化到 ``[0, \beta]``。
+
+```@docs
+fermionic_toulouse_Gw_semicircular
+fermionic_toulouse_Gt_semicircular
+fermionic_toulouse_Giw_semicircular
+fermionic_toulouse_Gτ_semicircular
+```
+
+示例——闭式解与通用数值实现的对比（半圆浴下两者应一致，闭式解更快更精确）：
+
+```julia
+using ImpurityModelBase
+
+t, ϵ_d, μ = 1.0, 0.3, 0.0
+spec = semicircular(t)
+bath = fermionicbath(spec, β=2.0, μ=μ)
+
+Gw_semicircular(ω) = fermionic_toulouse_Gw_semicircular(ω; ϵ_d=ϵ_d, μ=μ, t=t)
+Gw_numerical(ω)    = toulouse_Gw(bath, ω; ϵ_d=ϵ_d)
+
+Gτ_semicircular(τ) = fermionic_toulouse_Gτ_semicircular(τ; β=2.0, ϵ_d=ϵ_d, μ=μ, t=t)
+Gτ_numerical(τ)    = toulouse_Gτ(bath, τ; ϵ_d=ϵ_d)
+```
+
+## 独立玻色子模型
+
+费米杂质耦合声子（独立谐振子）浴：
+
+```math
+H = \epsilon_d d^\dagger d + \sum_k \omega_k a_k^\dagger a_k
++ d^\dagger d \sum_k g_k (a_k + a_k^\dagger),
+```
+
+`bands = 2` 时为自旋双带版本，含相互作用 ``U``：
+
+```math
+H = \epsilon_d \sum_\sigma d_\sigma^\dagger d_\sigma
++ U\, d_\uparrow^\dagger d_\uparrow d_\downarrow^\dagger d_\downarrow
++ \sum_k \omega_k a_k^\dagger a_k
++ \sum_\sigma d_\sigma^\dagger d_\sigma \sum_k g_k (a_k + a_k^\dagger).
+```
+
+声子浴对电子的 dressing 归结为一个乘性指数因子，其中重整化能移
+
+```math
+\Delta = \int \mathrm{d}\omega\, \frac{J(\omega)}{\omega}
+```
+
+由谱密度自动计算（关键字 `Δ`，默认按上式求积）；极化子指数
+
+```math
+\Phi(\tau) = \int \mathrm{d}\omega\, J(\omega)\,
+\frac{1 - e^{-\omega\tau} + e^{-\beta\omega} - e^{-(\beta-\tau)\omega}}
+{(1 - e^{-\beta\omega})\,\omega^2}.
+```
+
+格林函数为（重整化后的）自由费米子因子与 dressing 因子之积：
+
+```math
+G(\tau) = G^0(\tau;\, \mu' = -\epsilon_d + \Delta)\; e^{-\Phi(\tau)}
+\qquad (\text{bands}=1),
+```
+
+```math
+G(\tau) = G^0_U(\tau;\, \mu' = -\epsilon_d + \Delta,\, U' = U - 2\Delta)\; e^{-\Phi(\tau)}
+\qquad (\text{bands}=2),
+```
+
+其中 ``G^0``、``G^0_U`` 分别为上文自由/相互作用费米子的 ``G(\tau)``。
+实时间 greater / lesser 同理，指数取复时间 ``\tau = \pm it``：
+
+```math
+G^>(t) = G^>_0(t;\, \mu')\, e^{-\Phi(it)},
+\qquad
+G^<(t) = G^<_0(t;\, \mu')\, e^{-\Phi(-it)}.
+```
+
+```@docs
+independentbosons_Gτ
+independentbosons_greater
+independentbosons_lesser
+```
+
+### 任意初始杂质密度矩阵（乘积初始态）
+
+上面各式的初始态为整体热平衡 ``e^{-\beta H}/Z``。本包还支持**乘积初始态**
+``\rho(0) = \rho_0 \otimes \rho_{\rm bath}``，其中 ``\rho_{\rm bath} = e^{-\beta H_{\rm bath}}/Z_{\rm bath}``
+是声子浴的热平衡态，而 ``\rho_0`` 是**任意的**杂质密度矩阵（可含相干元）。
+
+因为 ``[H, \hat n_d] = 0``，杂质占据数守恒，只有 ``\rho_0`` 的**对角元**进入格林函数，
+相干元不贡献。接口中 ``\rho_0`` 以完整密度矩阵给出：
+
+- `bands = 1`：``2\times2`` 矩阵，基矢 ``(|0\rangle, |1\rangle)``；
+- `bands = 2`：``4\times4`` 矩阵，基矢 ``(|0\rangle, |\uparrow\rangle, |\downarrow\rangle, |\uparrow\downarrow\rangle)``。
+
+记对角元为 ``\rho_0^{00},\ \rho_0^{11}``（`bands=1`）与
+``\rho_0^{00},\ \rho_0^{\uparrow\uparrow},\ \rho_0^{\downarrow\downarrow},\ \rho_0^{\uparrow\downarrow}``
+（`bands=2`）。乘积初始态下的 greater / lesser 格林函数为
+
+```math
+G^>(t) = -i\,\rho_0^{00}\, e^{i\mu' t}\, e^{-\Phi(it)},
+\qquad
+G^<(t) = i\,\rho_0^{11}\, e^{i\mu' t}\, e^{-\Phi(it)}
+\qquad (\text{bands}=1),
+```
+
+```math
+\begin{aligned}
+G^>_\uparrow(t) &= -i\left[\rho_0^{00} + \rho_0^{\downarrow\downarrow}\,
+  e^{i(\mu'-U')t}\, e^{-2i\Gamma(t)}\right] e^{i\mu' t}\, e^{-\Phi(it)},\\
+G^<_\uparrow(t) &= \phantom{-}i\left[\rho_0^{\uparrow\uparrow} + \rho_0^{\uparrow\downarrow}\,
+  e^{i(\mu'-U')t}\, e^{-2i\Gamma(t)}\right] e^{i\mu' t}\, e^{-\Phi(it)}
+  \qquad (\text{bands}=2),
+\end{aligned}
+```
+
+其中
+
+```math
+\Gamma(t) = \int \mathrm{d}\omega\, J(\omega)\,
+\frac{\sin(\omega t)}{\omega^2}
+```
+
+是进入/离开双占据态时声子浴额外汇集到的位移相因子（`_double_transition`）。
+
+!!! note
+    乘积初始态下 greater 与 lesser **都用** ``e^{-\Phi(it)}``；而热平衡态的 lesser
+    按 KMS 关系用 ``e^{-\Phi(-it)}``（见上节）。两者之差正是初始态类型造成的。
+
+## 自旋-玻色退相干
+
+自旋-玻色模型去掉隧穿项（无 ``\sigma_x`` 耦合）后的精确退相干动力学：
+
+```math
+H = \Delta \sigma_z + \sigma_z \sum_k V_k (a_k + a_k^\dagger) + \sum_k \omega_k a_k^\dagger a_k.
+```
+
+由于只有 ``\sigma_z`` 与浴耦合，布居（对角元）不随时间变化，只有相干（非对角元）
+获得重整化相位并衰减：
+
+```math
+\rho_{12}(t) = \rho_{12}(0)\, e^{-i\Delta t}
+\exp\left[-\int \mathrm{d}\omega\, J(\omega)\,
+\frac{\coth(\beta\omega/2)}{\omega^2}\,(1 - \cos\omega t)\right].
+```
+
+```@docs
+spinboson_dephasingdynamics
+```
+
+### 动力学去耦
+
+`ddxx_spinboson_dephasingdynamics` 在 XX 脉冲序列（`N` 为偶数步、每步间隔 `δt`）
+下演化退相干模型，可用于演示动力学去耦对相干性的保护。脉冲序列把衰减指数中的
+``(1-\cos\omega t)`` 替换为滤波函数 ``F_N(\omega)``：
+
+```math
+\rho_{12}(N\delta t) = \rho_{12}(0)\,
+\exp\left[-\int \mathrm{d}\omega\, J(\omega)\,
+\frac{\coth(\beta\omega/2)}{\omega^2}\,\big(1-\cos\omega\delta t\big)\,
+F_N(\omega)\right],
+```
+
+其中滤波函数为如下的双重求和（与实现逐项对应，``(-1)^{j+k}`` 为 XX 脉冲的符号调制）：
+
+```math
+F_N(\omega) = \sum_{j=1}^{N}\left[1 + 2\sum_{k=1}^{j-1} (-1)^{j+k}
+\cos\big(\omega (j-k)\delta t\big)\right].
+```
+
+```@docs
+ddxx_spinboson_dephasingdynamics
+```
+
+## Holstein 模型
+
+Holstein 模型（电子-声子耦合格点模型）的解析连续分数展开（CFE）解，以及其在无限配位数
+Bethe 晶格上的 DMFT 自洽求解（Ciuchi, de Pasquale, Fratini & Feinberg, PRB 56, 4494 (1997)）：
+
+```math
+H = \epsilon_d\, d^\dagger d + \omega_0\, b^\dagger b
++ g\, d^\dagger d\,(b^\dagger + b)
++ \sum_k \epsilon_k\, c_k^\dagger c_k
++ \sum_k V_k\,(d^\dagger c_k + c_k^\dagger d).
+```
+
+杂质格林函数由 CFE 求得（``G = 1/(\mathcal{G}_0^{-1} - \Sigma)`` 的连分数展开；零温精确，
+有限温实现按谱的玻尔兹曼再分布处理），标度参数为 ``\lambda = g^2/(\omega_0 t)``、
+``\gamma = \omega_0/t``（``t`` 为 Bethe 晶格半带宽）。DMFT 自洽条件为
+
+```math
+\mathcal{G}_0^{-1}(\omega) = \omega - \frac{t^2}{4}\,G(\omega),
+```
+
+`holstein_dmft_bethe` 在频率网格上迭代该条件直到谱函数收敛（支持零温与有限温）。
+完整复现 Ciuchi et al. 论文各图表（Fig. 10–13、16）的教程见
+`docs/tutorials/holstein/holstein_tutorial.ipynb`，其中还包含论文图像的像素级数字化数据
+与复现谱的逐点对比。
+
+标度参数与裸参数的换算：
+
+```@docs
+ImpurityModelBase.holstein_scaleless_parameters
+ImpurityModelBase.holstein_bare_parameters
+```
+
+```@docs
+holstein_Gt
+holstein_Gw
+holstein_G0w_to_Gw
+holstein_G0w_to_Σw
+holstein_dmft_bethe
+ImpurityModelBase.GreenFunction
+ImpurityModelBase.holstein_G0w_to_Gw_zeroT
+ImpurityModelBase.holstein_G0w_to_Gw_finiteT
+ImpurityModelBase.holstein_G0w_to_Σw_zeroT
+ImpurityModelBase.bethe_holstein_G0inv_from_G
+ImpurityModelBase.bethe_holstein_G_from_G0inv
+```

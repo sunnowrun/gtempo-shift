@@ -1,0 +1,47 @@
+[
+  {
+    "original_path": "/home/zjsun/Desktop/Agent/try_sth/GTEMPO_theory/order1_实时GTEMPO_从Hamiltonian到代码目标的完整推导.md",
+    "snapshot": "foundations/01_order1_实时GTEMPO_从Hamiltonian到代码目标的完整推导.md",
+    "sha256": "c16d736ab7b21e00d39129c3ddb105165e9e3586942161a2ce5cddec69c90848"
+  },
+  {
+    "original_path": "/home/zjsun/Desktop/Agent/try_sth/GTEMPO_theory/GTEMPO_order1_虚时间逐步推导.md",
+    "snapshot": "foundations/02_GTEMPO_order1_虚时间逐步推导.md",
+    "sha256": "29d3f34f83aaf68f85e66dcd93c43a3dafbd442a4355589dc9337e105a1d6223"
+  },
+  {
+    "original_path": "/home/zjsun/Desktop/Agent/try_sth/GTEMPO_theory/GTEMPO_理论与离散阶数审计.md",
+    "snapshot": "foundations/03_GTEMPO_理论与离散阶数审计.md",
+    "sha256": "34e8a457eee2fbf72dd57cd103c768cf1a58544d95adafc9ebc7cbb645368e1d"
+  },
+  {
+    "original_path": "/home/zjsun/.codex/worktrees/4288/GTEMPO_theory/order2/weyl_tti/推导.md",
+    "snapshot": "foundations/04_推导.md",
+    "sha256": "306463db9abc7b7ab330fa0d6c1c06038dd0134cb07bec6a8cbf034fc3c432e4"
+  },
+  {
+    "original_path": "/home/zjsun/.codex/worktrees/4288/GTEMPO_theory/order2/weyl_tti/验证报告.md",
+    "snapshot": "foundations/05_验证报告.md",
+    "sha256": "3b31ae080b096c18c4fe3c0497c40cdeb76dad2bb949262746b0c36feadebdd9"
+  },
+  {
+    "original_path": "/home/zjsun/.codex/worktrees/4288/GTEMPO_theory/order2/weyl_tti/TTI审计.md",
+    "snapshot": "foundations/06_TTI审计.md",
+    "sha256": "6d2d1ed947acb830e36d9990cde5c80a93a0c4610a1ad7877010270d602c5351"
+  },
+  {
+    "original_path": "/home/zjsun/.codex/worktrees/a0d0/GTEMPO_theory/order2/weyl_tti/if_constant_audit/理论审查.md",
+    "snapshot": "foundations/07_理论审查.md",
+    "sha256": "de4680b19b43ee25253c97588662f3026804abd0314f9de9d7ea78174bee2c1d"
+  },
+  {
+    "original_path": "/home/zjsun/.codex/worktrees/4288/GTEMPO_theory/order2/core.py",
+    "snapshot": "foundations/08_core.py",
+    "sha256": "baff2b4d6ac1aa59d715bfed3bb296541d0effd22681955d22212f4193973f0e"
+  },
+  {
+    "original_path": "/home/zjsun/.codex/worktrees/4288/GTEMPO_theory/order2/weyl_tti/weyl.py",
+    "snapshot": "foundations/09_weyl.py",
+    "sha256": "bffbef6cda263ea3a0be989b6f5877a0c7a7d7a7d8b32226e1c1fb025ab1d2a8"
+  }
+]

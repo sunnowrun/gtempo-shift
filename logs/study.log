@@ -1,0 +1,42 @@
+WARNING: Detected access to binding `Main.ShiftStudy` in a world prior to its definition world.
+  Julia 1.12 has introduced more strict world age semantics for global bindings.
+  !!! This code may malfunction under Revise.
+  !!! This code will error in future versions of Julia.
+Hint: Add an appropriate `invokelatest` around the access to this binding.
+To make this warning an error, and hence obtain a stack trace, use `julia --depwarn=error`.
+WARNING: Detected access to binding `ShiftStudy.case` in a world prior to its definition world.
+  Julia 1.12 has introduced more strict world age semantics for global bindings.
+  !!! This code may malfunction under Revise.
+  !!! This code will error in future versions of Julia.
+Hint: Add an appropriate `invokelatest` around the access to this binding.
+To make this warning an error, and hence obtain a stack trace, use `julia --depwarn=error`.
+[ Info: Precompiling GTEMPO [44ad46a9-1ad4-442b-94e0-dc86be91c0af](cache misses: wrong dep version loaded (2), target mismatch (1))
+Precompiling packages...
+   1561.9 ms  ✓ Future
+   2233.2 ms  ✓ VectorInterface → VectorInterfaceChainRulesCoreExt
+   2603.5 ms  ✓ Adapt → AdaptSparseArraysExt
+   5385.9 ms  ✓ KrylovKit
+   3487.5 ms  ✓ KrylovKit → KrylovKitChainRulesCoreExt
+  10335.2 ms  ✓ StridedViews
+   1244.8 ms  ✓ StridedViews → StridedViewsPtrArraysExt
+   2154.6 ms  ✓ StridedViews → StridedViewsAdaptExt
+  16068.7 ms  ✓ StaticArrays
+    909.0 ms  ✓ VectorInterface → VectorInterfaceStaticArraysExt
+    931.0 ms  ✓ ConstructionBase → ConstructionBaseStaticArraysExt
+   1313.6 ms  ✓ Adapt → AdaptStaticArraysExt
+   2668.0 ms  ✓ StaticArrays → StaticArraysChainRulesCoreExt
+   3557.6 ms  ✓ Interpolations
+   4046.6 ms  ✓ ImpurityModelBase
+   2513.5 ms  ✓ QuAPI
+  77481.9 ms  ✓ Polynomials
+   2483.7 ms  ✓ Polynomials → PolynomialsChainRulesCoreExt
+   3086.0 ms  ✓ ExpExp
+ 101223.1 ms  ✓ Strided
+ 113316.8 ms  ✓ MatrixAlgebraKit
+   1039.2 ms  ✓ MatrixAlgebraKit → MatrixAlgebraKitChainRulesCoreExt
+ 245024.0 ms  ✓ TensorOperations
+   1979.4 ms  ✓ TensorOperations → TensorOperationsChainRulesCoreExt
+   4358.8 ms  ✓ Z2Tensors
+  18345.5 ms  ✓ FiniteMPSAlgorithms
+  22303.2 ms  ✓ GTEMPO
+  27 dependencies successfully precompiled in 402 seconds. 40 already precompiled.

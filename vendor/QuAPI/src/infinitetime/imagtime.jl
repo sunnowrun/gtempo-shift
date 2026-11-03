@@ -1,0 +1,154 @@
+"""
+    struct InfiniteImagCorrelationCache{B <: Vacuum}
+
+Incrementally grown, translationally invariant imaginary-time hybridization
+function of a `Vacuum` (zero-temperature) bath.
+
+The Toeplitz vectors `ηⱼₖ`/`ηₖⱼ` are extended one node at a time by
+`compute_next!` until the newest element falls below `atol` (or a maximum
+iteration count is reached); `compute!` drives the growth and `current_size`
+/`current_temperature` report the current number of nodes and the covered
+imaginary time.
+"""
+struct InfiniteImagCorrelationCache{B <: Vacuum}
+	ηⱼₖ::Vector{Float64}
+	ηₖⱼ::Vector{Float64}
+	bath::B
+	δτ::Float64
+end
+
+
+"""
+    current_size(x::InfiniteImagCorrelationCache)
+
+Number of nodes of the incrementally grown Toeplitz vectors.
+"""
+current_size(x::InfiniteImagCorrelationCache) = length(x.ηⱼₖ)
+
+"""
+    current_temperature(x::InfiniteImagCorrelationCache)
+
+Covered imaginary-time window, `current_size(x) * x.δτ`.
+"""
+current_temperature(x::InfiniteImagCorrelationCache) = current_size(x) * x.δτ
+
+InfiniteImagCorrelationCache(bath::Vacuum, δτ::Real) = InfiniteImagCorrelationCache(Float64[], Float64[], bath, convert(Float64, δτ))
+
+"""
+    infinite_Δτ(bath::Vacuum; δτ::Real, atol::Real=1.0e-6, β::Real=200)
+
+Translationally invariant zero-temperature (β → ∞) imaginary-time
+hybridization function of a `Vacuum` bath, discretized on a grid of step `δτ`.
+
+The Toeplitz vectors are grown node by node until the newest element drops
+below `atol`; `β` only sets the maximum imaginary-time window
+(`maxiter = round(Int, β/δτ)`) and a warning is emitted if the correlation
+does not decay to `atol` within it.
+
+Returns an `InfiniteImagCorrelationCache`, whose `ηⱼₖ`/`ηₖⱼ` vectors (of
+equal length) can be wrapped into a `CorrelationMatrix` once the decay
+criterion is met.
+
+Arguments:
+- `bath`:  a fermionic or bosonic `Vacuum` bath;
+- `δτ`:  the imaginary-time step size;
+- `atol`:  absolute tolerance for the newest `η` element (default 1.0e-6);
+- `β`:  maximum imaginary-time window for the growth (default 200).
+"""
+function infinite_Δτ(bath::Vacuum; δτ::Real, kwargs...)
+    corr = InfiniteImagCorrelationCache(bath, δτ)
+    compute!(corr; kwargs...)
+    return corr
+end
+
+"""
+    compute!(x::InfiniteImagCorrelationCache; atol::Real=1.0e-6, β::Real=200)
+
+Grow the Toeplitz vectors by repeated `compute_next!` until the newest
+element falls below `atol` or the window `β` is exhausted.  Returns the
+number of nodes.
+"""
+function compute!(x::InfiniteImagCorrelationCache; atol::Real=1.0e-6, β::Real=200)
+	maxiter = round(Int, β / x.δτ)
+	atol = convert(Float64, atol)
+	while current_size(x) <= maxiter
+		if (current_size(x) > 1) && (max(abs(x.ηⱼₖ[end]), abs(x.ηₖⱼ[end])) <= atol)
+			break
+		end
+		compute_next!(x)
+	end
+	(current_size(x) > maxiter) && @warn "correlation can not decay to less than $atol for β=$(β), error=$(max(abs(x.ηⱼₖ[end]), abs(x.ηₖⱼ[end])))"
+	return current_size(x)
+end
+
+
+"""
+    compute_next!(x::InfiniteImagCorrelationCache)
+
+Append one node to the Toeplitz vectors.
+"""
+function compute_next!(x::InfiniteImagCorrelationCache{<:FermionicVacuum})
+	f0 = x.bath.f
+	β, μ = x.bath.β, x.bath.μ
+    f = spectrumshift(f0, μ)
+    δτ = x.δτ
+
+    # g₁(ϵ) = _f₁(β, 0., ϵ)
+    # g₂(ϵ) = _f₂(β, 0., ϵ)
+    # fⱼₖ(Δk::Int) = _fⱼₖ_i(f, Δk, δτ)
+    # fₖⱼ(Δk::Int) = _fₖⱼ_i(f, Δk, δτ)
+    # fⱼⱼ = _fⱼⱼ_i(f, δτ)
+    # fₖₖ = _fₖₖ_i(f, δτ)
+
+    fⱼₖ(Δk::Int) = _fermionic_fⱼₖ_i(f, β, 0, Δk, δτ)
+    fₖⱼ(Δk::Int) = _fermionic_fₖⱼ_i(f, β, 0, Δk, δτ)
+    fⱼⱼ = _fermionic_fⱼⱼ_i(f, β, 0, δτ)
+    fₖₖ = _fermionic_fₖₖ_i(f, β, 0, δτ)
+
+
+    # j >= k
+    N = current_size(x)
+    if N == 0
+    	ηⱼₖ_new = quadgkwrapper(fⱼⱼ)
+    	ηₖⱼ_new = quadgkwrapper(fₖₖ)
+    else
+    	ηⱼₖ_new = quadgkwrapper(fⱼₖ(N))
+    	ηₖⱼ_new = quadgkwrapper(fₖⱼ(N))
+    end
+    push!(x.ηⱼₖ, ηⱼₖ_new)
+    push!(x.ηₖⱼ, ηₖⱼ_new)
+    return x
+end
+
+function compute_next!(x::InfiniteImagCorrelationCache{<:BosonicVacuum})
+	f0 = x.bath.f
+	β, μ = x.bath.β, x.bath.μ
+    f = spectrumshift(f0, μ)
+    δτ = x.δτ
+
+    # g₁(ϵ) = _f₁(β, 0., ϵ)
+    # g₂(ϵ) = _f₂(β, 0., ϵ)
+    # fⱼₖ(Δk::Int) = _fⱼₖ_i(f, Δk, δτ)
+    # fₖⱼ(Δk::Int) = _fₖⱼ_i(f, Δk, δτ)
+    # fⱼⱼ = _fⱼⱼ_i(f, δτ)
+    # fₖₖ = _fₖₖ_i(f, δτ)
+
+    fⱼₖ(Δk::Int) = _bosonic_fⱼₖ_i(f, β, 0, Δk, δτ)
+    fₖⱼ(Δk::Int) = _bosonic_fₖⱼ_i(f, β, 0, Δk, δτ)
+    fⱼⱼ = _bosonic_fⱼⱼ_i(f, β, 0, δτ)
+    fₖₖ = _bosonic_fₖₖ_i(f, β, 0, δτ)
+
+
+    # j >= k
+    N = current_size(x)
+    if N == 0
+    	ηⱼₖ_new = quadgkwrapper(fⱼⱼ)
+    	ηₖⱼ_new = quadgkwrapper(fₖₖ)
+    else
+    	ηⱼₖ_new = quadgkwrapper(fⱼₖ(N))
+    	ηₖⱼ_new = quadgkwrapper(fₖⱼ(N))
+    end
+    push!(x.ηⱼₖ, ηⱼₖ_new)
+    push!(x.ηₖⱼ, ηₖⱼ_new)
+    return x
+end

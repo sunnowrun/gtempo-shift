@@ -1,0 +1,754 @@
+# Interface changes
+
+## New: `PairOpTerm` — pair-coupled long-range terms with an arbitrary coupling matrix
+
+`PairOpTerm(a, m, b, C)` (exported; identity-propagator form `PairOpTerm(a, b, C)`)
+represents the operator
+
+```
+O = Σ_{i<j} C[i,j] · a_i m_(i+1) ⋯ m_(j-1) b_j
+```
+
+on an `L`-site chain (`L = size(C, 1)`): `a` opens at the earlier site, `b` closes at
+the later one, `m` propagates the channel in between (a Jordan-Wigner string for
+fermionic `a_i† a_j`-type couplings), and the coupling matrix `C` is completely
+arbitrary — strictly upper triangular, no constraint on the distance dependence of the
+couplings (power-law, random, …). The Schur (W-form) site tensors follow the
+finite-state-machine layout of TEMPO's `_fsm_mpohamiltonian` (one channel per coupled
+starting site, bond dimension `L + 1`), with the channel propagator `m` generalizing
+its identity propagation.
+
+- `SchurMPOTensor(t, s, [hloc])`: the site-`s` tensor (site-dependent — channels open,
+  propagate and close at their positions); the optional `hloc` accumulates in the `D`
+  corner;
+- `MPOHamiltonian(t)` / `MPOHamiltonian(t, hloc)` / `MPOHamiltonian(t, hlocs)`: the
+  chain assembly with a uniform — or a per-site, operator-inhomogeneous — on-site
+  operator in the `D` corners;
+- `OpSum(t)`: the debug expansion into explicit product terms;
+- `adjoint`: adjointed operators in place, conjugated couplings.
+
+`ExpDecayOpSum(a, m, b, αs, λs)` is the special case `C[i,j] = Σ_k α_k λ_k^(j-i)` at
+bond dimension n + 2; `PairOpTerm` covers arbitrary `C` at bond dimension L + 1. The
+tests pin both representations against independent `kron` dense references (including
+dead/sparse channels), their equality for exponential couplings, the `hloc`/`hlocs`
+on-site chains, the adjoint and the `OpSum` expansion.
+
+## Renamed: `GateOp` → `Gate`; new matrix constructor
+
+- The gate type `GateOp` is now `Gate` (exported); `AbstractGate` is unchanged.
+- New constructor `Gate(positions, op::AbstractMatrix, phydims; isunitary=nothing,
+  atol=1.0e-10)` builds the gate from the usual operator matrix (rows = bra,
+  columns = ket) by reshaping it with the local physical dimensions. `phydims` is
+  either the `N` support dimensions in the order of `positions`, the full lattice
+  dimensions indexed by position (so `phydims(ψ)` can be passed directly), or a
+  single integer for a uniform local dimension on every support site. The matrix
+  must be `D × D` with `D = prod(dims)`.
+
+## Changed: `GateOp` carries `isunitary`; `fuse_gates` has no `maxsites`; `apply!` canonicalizes by unitarity
+
+- `GateOp` gains an `isunitary::Bool` field. The constructor is now
+  `GateOp(positions, op; isunitary::Union{Bool,Nothing}=nothing, atol=1.0e-10)`:
+  with `isunitary = nothing` (default) the flag is determined internally by checking
+  `U†·U ≈ I` (within `atol`) on the fused operator matrix; a `Bool` is trusted as given
+  (no check). `isunitary(g::GateOp)` now simply returns the field — it no longer takes
+  an `atol` keyword. `shift` and `adjoint` propagate the flag.
+- `apply!(g, ψ; ...)` now defaults to `canonicalize = !isunitary(g)`: unitary gates keep
+  the canonical form by the Hastings update alone (no trailing `truncate!`), while
+  non-unitary gates re-canonicalize under `trunc`. Previously the default was `false`.
+  Pass `canonicalize=true/false` to override.
+- `fuse_gates(gates)` no longer takes `maxsites`: every gate is absorbed, so the fused
+  circuit may contain gates on supports larger than any previous cap (merges are only
+  skipped between gates with disjoint — hence commuting — supports). The fused circuit
+  applies exactly the same product of operators as the input; a gate whose support
+  covers a site swallows every single-site gate of that site. Merged gates carry
+  `isunitary = isunitary(a) && isunitary(b)`.
+
+The tests cover the automatic/keyword/`atol` unitarity detection, the
+`canonicalize = !isunitary(g)` default, full absorption of all single-site gates by a
+multi-site gate covering every site, and the exact equivalence of fused and original
+circuits on a state (including a random mixed single-/two-/three-site circuit).
+
+## Interface: `GeneralStepper`, `Models` sub-module, `TaylorCluster` tweaks
+
+- `TaylorCluster` now inherits the new abstract `GeneralStepper` (exported) instead of
+  `FirstOrderStepper`: it is an arbitrary-order stepper, not a first-order one. The
+  application path is unchanged (`timeevo` gained a `GeneralStepper` method; `timeevo!`
+  handles it through its `MPSAlgorithm` fallback).
+- Consequently `TaylorCluster` no longer composes into `ComplexStepper` — matching
+  MPSKit, where the cluster expansion has no two-half-step composer (the order `N` covers
+  the accuracy). `ComplexStepper(TaylorCluster(...))` is now a `MethodError`.
+- `TaylorCluster` keeps the order as a plain `N::Int` field (not a type parameter),
+  mirroring MPSKit; the per-order specialization happens behind the existing `Val(N)`
+  function barrier.
+- `Base.@kwdef` → `@kwdef` in the stepper definition (cosmetic, consistent with the
+  other steppers).
+- The model builders (`σx/σy/σz`, `Sx/Sy/Sz`, `heisenberg_hamiltonian`,
+  `tfim_hamiltonian`, `fermi_hubbard`) moved from the top-level namespace into the
+  sub-module **`FiniteMPSAlgorithms.Models`**: load them with
+  `using FiniteMPSAlgorithms.Models`. They are no longer re-exported by the parent
+  module.
+
+## New: `TaylorCluster` time evolution (ported from MPSKit)
+
+`TaylorCluster(; N=2, extension=true, compression=false)` builds the `N`-th order
+time-evolution MPO from the Taylor cluster expansion (Van Damme et al., SciPost Phys. 17,
+135 (2024); ported from MPSKit's `algorithms/timestep/taylorcluster.jl`). It is a
+`FirstOrderStepper`: `timeevompo(h, dt, TaylorCluster(...))` builds the evolved MPO
+(all the WI/WII application machinery — `timeevo`, `timeevo!`, `ComplexStepper`
+composition — works unchanged), and `TaylorCluster(N=1, extension=false)` is the
+mathematical counterpart of [`WI`](@ref).
+
+The fused channel blocks live on the `N`-fold products of the Schur channels and are
+processed with the reference's Algorithm 1 (loop-back), 2 (permutation-equivalent
+collapse), 3 (higher-order extension) and 4 (optional approximate compression), with the
+boundary-dead channels zeroed up front (MPSKit's 1×3/3×1 end convention). Verified
+against MPSKit's `make_time_mpo` on identical Hamiltonians (square and rectangular
+chains, all N/extension/compression combinations): the evolution operators agree to
+~1e-18 (`debug/taylorcluster/align_mpskit.jl`).
+
+## Performance: zip-fused ALS sweeps for `mult` / `compress` / `hadamard` (DMRG1 & DMRG2)
+
+The ALS sweeps of the three iterative arithmetics (`mult`, `compress`, `hadamard`, both
+the `DMRG1` and `DMRG2` engines) adopt the pre-fused partial-tensor mechanism of
+InfiniteMPSAlgorithms (`zip_sweeps!`): each site fuses the repeated `(environment ·
+ket · operator)` contraction (pointwise-product pair for `hadamard`; `(cL · ket)` for
+`compress`) **once** into a fused tensor and uses it twice —
+
+- *map*: one binary contraction with the opposite environment gives the local ALS
+  target (`_map_fused` / `_map_fusedR`, plus the two-site `_map_fused2` / `_map_fused2R`
+  that contract only the opposite sandwich);
+- *push*: one binary contraction with `conj(updated bra)` gives the next environment
+  (`_push_left_fused!` / `_push_right_fused!`).
+
+The general template contracted the same `(ket, operator)` pair twice per site (local
+target + environment push); the fused sweeps contract it once, roughly halving the
+per-site sweep contraction work. The `hadamard` fusions are batched explicitly over the
+shared physical index (it is elementwise between the two kets — broadcast, not a
+contraction, so `@tensor` cannot express it). The sweep interfaces, loss histories and
+results are unchanged: the fused sweeps realize the same variational iteration up to
+floating-point re-association (verified sweep-by-sweep against the previous
+implementation — per-sweep losses and optimized chains agree to ~1e-15 relative, see
+`debug/zip_fuse_compare.jl`; the general kernels they replace — `_reduce_site`,
+`_reduce_site2`, `_reduce_hadamard_site2`, `_reduce_compress_site` and the OverlapCache
+`_reduce_two_site` — are gone, while `_reduce_hadamard_site` stays for the HadamardTDVP
+site maps). Full suite: 1023/1023.
+
+## New: `dot` / `distance` / `fidelity` for `CanonicalMPO` pairs
+
+`CanonicalMPO` gains the same linear-algebra interface as `CanonicalMPS`:
+
+- `LinearAlgebra.dot(hA, hB)`: the Hilbert-Schmidt overlap `Σ tr(conj(hA)·hB)` including
+  the per-site `scaling` factors of both operands (total = `(scalingA·scalingB)^L`,
+  applied per site during the transfer contraction — no `scaling^L` power is
+  materialized, mirroring the `CanonicalMPS` `dot`);
+- `_dot(hA, hB)`: the raw (scale-free) data contraction;
+- `distance` / `distance2`: the represented-chain distance (the generic `_distance2`
+  built on the scaling-aware `dot`);
+- `fidelity` / `infidelity`: computed from the raw scale-free contractions, so the
+  `scaling` factors cancel exactly and the value stays finite for arbitrarily large
+  external scalings (`dot`/`norm` remain finite through the per-site application).
+- `norm` / `tr` already supported `CanonicalMPO` (they are defined on `AbstractMPO`)
+  and are unchanged.
+
+The tests restore the `CanonicalMPO` inputs of the "operator fidelity" and
+"operator norm/dot stability" testsets (external-scaling invisibility of `fidelity`,
+scaling-carrying `dot` vs the dense Hilbert-Schmidt value) and add an overflow-stability
+testset: `fidelity` identical for `scaling = 1e150` (where `scaling^L` overflows) and
+`dot`/`norm` finite with shrunken data through the per-site application, with the
+log-scale consistency `log|dot| = log|dot₀| + L·log(scalingA·scalingB)`.
+Full suite: 1023/1023.
+
+## Changed: cache constructors take the optimized chain as their first argument
+
+The public constructors of the nine iterative algorithm caches now take the chain being
+optimized / updated **first**, with the operator (and the remaining fixed operands)
+following — mirroring the in-place drivers' argument order (`mult!(out, h, x, alg)`,
+`hadamard!(χ, ψA, ψB, alg)`, `linsolve!(x, A, y, alg)`):
+
+- `DMRGCache(ψ, h)` (was `DMRGCache(h, ψ)`);
+- `ExcitedStateCache(ψ, h, projectors)` (was `(h, ψ, projectors)`);
+- `TDVPCache(state, h)` for both manifolds (was `(h, state)`; the `MPOHamiltonian`
+  convenience method keeps its expanding behavior, `TDVPCache(ρ, h::MPOHamiltonian)`);
+- `CADMRGCache(ψ, h)` and `ThermalDMRGCache(rho, h)` (arguments swapped);
+- `HadamardTDVPCache(ψ, H)` (was `(H, ψ)`);
+- `MultCache(out, h, x)` (was `(h, x, out)`);
+- `HadamardCache(χ, ψA, ψB)` (was `(ψA, ψB, χ)`);
+- `LinsolveCache(x, A, y)` (was `(A, y, x)`).
+
+The struct layouts are unchanged (the raw multi-argument constructors keep the field
+order); only the convenience constructors, their docstrings and every in-repo call site
+(src, tests, debug scripts) are adapted. Full suite: 1012/1012.
+
+## Changed: `complex` of an already-complex chain returns the same object (no copy)
+
+`Base.complex` on `CanonicalMPS` / `CanonicalMPO` / `MPO` copied the chain even when the
+element type was already complex; the `SchurMPOTensor` / `SparseMPOTensor` methods
+converted unconditionally. All of them now return the input as-is when
+`scalartype <: Complex` (matching `Base.complex(z::Complex) = z` and the existing
+`MPOHamiltonian` behavior); real inputs still produce a converted copy. Note the
+aliasing: mutating a complex chain in place is visible through its `complex` image.
+
+## Fixed: `max_bonddims` respects the state-space bound from both chain ends
+
+`max_bonddims(ds, D)` — the profile behind `randommps`, the random seq2seq MPO and the
+`svdguess_mult` bond cap — only grew the bond dimension from the left, so chains whose
+`D` exceeds the state space over-parametrized the draw (L=6, d=2, D=64 drew bonds up to
+32 where the chain allows 8) and relied on a later `canonicalize!` to trim the padded
+directions. The profile is now the true bound
+`min(D, ∏_{j≤i} ds[j], ∏_{j>i} ds[j])` at every cut, with unit boundary bonds;
+`randommpo` and both `changebond!` variants reuse it as the single source of truth
+(their duplicated profile loops are gone). The `seq2seq` tests recalibrate with the new
+draw (`maxiter` 25 → 50; the thresholds are unchanged). Full suite: 961/961.
+
+## New: `Defaults.alg_eigsolve` / `alg_expsolve` / `alg_linsolve` / `alg_orth` / `alg_trunc` / `alg_orth_trunc`, and per-algorithm solver fields
+
+The default solvers and factorizations move into [`Defaults`](@ref) as *functions*
+returning the configured algorithm objects (mirroring MPSKit/InfiniteMPSAlgorithms'
+`Defaults` style):
+
+- `Defaults.alg_eigsolve(; ishermitian=true, tol, maxiter, krylovdim, eager)` — the
+  Lanczos/Arnoldi object of the local effective-Hamiltonian problems;
+- `Defaults.alg_expsolve(; ishermitian=true, tol, maxiter, krylovdim)` — the local
+  exponentials of TDVP1/TDVP2 (and the Hadamard TDVP);
+- `Defaults.alg_linsolve(; tol, maxiter)` — the `CG` wrapper of the ALS local normal
+  equations (replaces the exported `DefaultLinearSolver` **const**, which is gone);
+- `Defaults.alg_orth()` — the factorization of the QR/LQ gauge moves (`QRpos()`; the
+  right-to-left moves use the adjoint `alg'` = LQpos);
+- `Defaults.alg_trunc()` / `Defaults.alg_orth_trunc()` — the package-level truncation
+  schemes (replacing the `DefaultTruncation` / `DefaultOrthTruncation` **consts**, which
+  are gone).
+
+The variational engines carry the corresponding fields (typed, `Defaults`-defaulted):
+
+- `DMRG1{E,O}` / `DMRG2{TR,E,O}` / `PDMRG{TR,E,O}` / `CADMRG{TR,E,O}`: `alg_eigsolve`
+  drives the local `eigsolve` (positional argument of `KrylovKit.eigsolve`; PDMRG
+  rebuilds it with the rank-dependent Krylov dimension `2·min(R, dim)`), and `alg_orth`
+  the QR/LQ gauge moves — for DMRG2/PDMRG/CADMRG it is accepted for interface
+  uniformity (their re-splits are truncating SVDs under `alg.trunc` and carry the
+  gauge themselves);
+- `TDVP1{S,E,O}` / `TDVP2{S,TR,E,O}` and `HadamardTDVP{S,E,O}` / `HadamardTDVP2{S,TR,E,O}`:
+  `alg_expsolve` drives every local `KrylovKit.exponentiate` (`ishermitian` now only
+  selects the field's default) and `alg_orth` the single-site gauge moves;
+- `ALSLinSolve`, `ALSLinSolve2`, `ALSRecon`, `ALSRecon2`: the `solver` field is renamed
+  `alg_linsolve` (same for the `linsolve` sweeps, which now dispatch on `ALSLinSolve`
+  only; the `_solverof` indirection is gone).
+
+All defaults reproduce the previously hard-coded parameters exactly
+(`Defaults.alg_trunc()` = the old `DefaultTruncation` with `add_back = 1`,
+`Defaults.alg_orth_trunc()` = the old `DefaultOrthTruncation`); existing positional/keyword
+constructions keep working, and explicit overrides (`DMRG1(alg_eigsolve=KrylovKit.Arnoldi(...))`,
+`TDVP2(stepsize, trunc=...)`, ...) are now possible. Full suite: 960/960.
+
+## Fixed: `norm` of an operator chain clamps `⟨h|h⟩` at zero
+
+`norm(h::AbstractMPO) = sqrt(real(dot(h, h)))` threw a `DomainError` whenever the traced
+value rounded to a tiny negative real part — vanishing chains and near-cancelling data
+are realistic cases (e.g. a subnormal external `scaling`, where the per-site `s²`
+underflows the transfer). `norm` now mirrors the `CanonicalMPS` definition directly:
+the per-site `s²` scaling transfer followed by `real(tr(·))` and a clamp at zero before
+the square root (so a vanishing chain returns `0.0`). `dot` was already the
+`CanonicalMPS`-style per-site-scaling contraction and is unchanged.
+
+## Fixed: `randommpo` used the MPS bond bound — the operator chain grows by ds² per site
+
+`randommpo` drew its site tensors on the `max_bonddims` profile (the MPS bound: the bond
+grows by one physical dimension per site), which is not the operator-chain bound. An MPO
+site carries an in and an out physical leg, so the bond space grows by `ds²` per site,
+bounded at every cut by `min(D, ∏_{j≤i} ds[j]², ∏_{j>i} ds[j]²)`. The old profile
+understated the achievable bonds wherever the `ds²` growth matters — e.g. L=6, d=2, D=64
+produced a bond-8 middle cut (capped by 2³) where the operator space allows 64 — and
+over-parametrized the right chain end (rank-deficient tensors later squeezed by
+`canonicalize!`). `randommpo` now draws on the true profile, bounded from both chain
+ends (so no boundary special-casing is needed); random data achieves it almost surely
+(`rank(todense)` full), `randommps` is unchanged, and the profiles are pinned by tests.
+
+## Changed: every iterative entry point returns an `ALSConvergenceInfo` as its last value
+
+`iterative_compute!(cache, alg; residual=false, kwargs...)` now returns an exported
+`info::ALSConvergenceInfo` (was the raw per-sweep loss history `khist`). The info carries
+
+- `niter`: the number of sweeps performed;
+- `converged`: whether `alg.tol` was reached;
+- `losses`: the per-sweep loss history (exactly the old `khist`);
+- `itererr`: the final relative loss difference (what `_iterative_delta(khist)` computed);
+- `residual`: the problem's residual when it *is* the loss — set by `linsolve`,
+  `seq2seq` and `reconstruct` (whose losses are the exact squared residual norms) via
+  the new `residual = true` kwarg of `iterative_compute!`; `nothing` for the other
+  drivers, where the loss differs from the residual by an unknown constant or is not
+  the residual at all.
+
+The drivers append the info after their existing returns; the `SVDCompression`
+one-pass routes are not iterative and keep returning the bare chain.
+
+- in-place data drivers: `mult!`, `add!`, `compress!`, `hadamard!`, `linsolve!`
+  (both the single-site and the two-site engines) return `(out, info)`;
+  `seq2seq!` returns `(W, info)`, `reconstruct!` `(ψ, info)`, `thermalstate!` `(rho, info)`;
+- out-of-place: `mult` / `add` / `compress` / `hadamard` / `linsolve` return
+  `(chain, info)`; `ground_state` returns `(E, ψ, info)`, `excited_state`
+  `(E, ψ, info)`, the CADMRG `ground_state` `(CAMPS, info)`, `thermalstate`
+  `(F, rho, info)`, `seq2seq(xs, ys, alg)` `(W, info)`, `reconstruct(samples, ds, alg)`
+  `(ψ, info)`; the oracle-based adaptive variants keep their `NamedTuple` infos;
+- drivers whose only return was the loss history now return the info directly:
+  `ground_state!`, `excited_state!` and the CADMRG `ground_state!`
+  (`info.losses` replaces the old `khist`).
+
+Internal call sites and the test suite are adapted (`_iterative_delta(khist)` became
+`info.itererr`); the `Logging` test dependency missing from the test target of
+`Project.toml` was fixed on the way. Full suite: 952/952.
+
+## Renamed: `Base.kron(a::AbstractMPO, b::AbstractMPO)` → `superoperator(a, b)`
+
+The fused-space Kronecker product of two operator chains overrode `Base.kron` with a
+factor order that contradicts Julia's slowest-first convention (on the dense forms the
+factor roles are swapped: `todense(superoperator(a, b)) = kron(todense(b), todense(a))`),
+so it is no longer a `Base.kron` overload. The new name states what it is: acting on
+`vectorize(X)` the result is the superoperator of the two-sided map
+`X ↦ a·X·transpose(b)`, with the side-superoperators as special cases
+(`superoperator(h, :left) = superoperator(h, I)`,
+`superoperator(h, :right) = superoperator(I, transpose(h))`). Behavior is unchanged.
+
+## Changed: `_naive_svd_guess` streams `site(i, carry)` — the carry is absorbed into the site construction
+
+The on-the-fly naive-SVD guess (shared by `svdguess_mult` / `svdguess_add` /
+`svdguess_hadamard`) used to materialize each composed site tensor of the exact chain
+(`copy(site(i))`), then apply the truncated-SVD carry in a *separate* pass
+(`_contract_last(B, carry)`), and in the mult route also pay a full-size `permute`
+beforehand. The producer interface is now `site(i, carry)`: each producer folds the carry
+(acting on the site's composite right bond) into the construction, contracting it against
+the uncombined tensors before the composite site tensor is ever formed —
+
+- mult (MPO·MPS / MPO·MPO): the carry block reshapes onto the composite right-bond
+  factors and contracts the uncombined contraction output; the `@tensor` writes the tied
+  leg order directly, so the `permute` copy is gone as well;
+- add: the carry distributes over the right-bond `cat` blocks (site 1 adds the
+  block results, bulk sites cat them along the left bond);
+- hadamard: the carry contracts the fused pair before tying (and reuses `_fused_pair`).
+
+Per site this removes one full defensive copy and one full pass over the composed tensor
+(plus the permute copy in the mult route); the streamed tensor now goes straight into the
+mutating `tsvd!`. Results are unchanged (same sums, different order of passes).
+
+## Fixed: the projected excited-state map is now Hermitian (unit-test warnings gone)
+
+Running the test suite emitted 194 KrylovKit warnings
+("ignoring imaginary component … operator might not be hermitian?"), from two unrelated
+sources:
+
+- **`excited_state` (40 warnings)** — `_projected_local_update!` built the one-sided
+  projected map `(I-P)·H_eff`. `P` and `H_eff` do not commute, so that map is *not*
+  Hermitian (measured defect 2.5e-3 … 1.9e-1), yet it was passed to Lanczos with
+  `ishermitian=true`. It now builds `Q†·H_eff·Q` with `Q = Πₖ(I-Pₖ)` (the adjoint side
+  projects in reverse order), which is Hermitian for any number of non-commuting
+  projectors (defect ~1e-16) and, on the subspace orthogonal to all projectors, coincides
+  with `H_eff` — the converged state and energy are unchanged.
+- **`test/operators/longrangeop.jl` (154 warnings)** — the DMRG smoke test fed a
+  *non-Hermitian* Hamiltonian (`ExpDecayOpSum` built from `randn(ComplexF64, …)` ends) to
+  `ground_state`/DMRG, which assumes a Hermitian operator. The decay chain in that test now
+  uses `σy` at both ends (Hermitian, complex) with an identity propagator, i.e.
+  `Σ_{i<j} λ^(j-i) σy_i σy_j`, which stays Hermitian while keeping `ComplexF64` arithmetic.
+
+Full suite: 936/936 (the `excited_state!` coverage now also computes the second excited
+state against both lower states), no warnings.
+
+## Fixed: contraction order of the three-tensor local maps (~400× on the Hadamard bond map)
+
+The nary `@tensor` contractions of the three-tensor local maps let TensorOperations pick
+the pairwise order, and for these shapes it contracts the two *environments* through their
+small middle legs first, materializing a `χ_L×χ_R×χ'_L×χ'_R` intermediate instead of
+folding the (small) iterate in first. At the TEMPO `TDVPIF` scales (χ=50, w=4) the bond
+map `c_prime` took **167 ms** per call this way (vs 0.41 ms for the explicit two-step,
+~400×) and one Hadamard bond exponentiate 4.3 s. All three hot maps now contract in two
+explicit, BLAS-shaped steps (fold the iterate into the right environment, then the left):
+
+- `c_prime` (shared: the hadamard bond maps and the `DMRG1`/`TDVP1`/`TDVP2` bond maps);
+- `_reduce_hadamard_site` (the ALS hadamard target and the `HadamardTDVP` site maps);
+- `_reduce_hadamard_site2` (the `HadamardTDVP2` pair target).
+
+Same contractions, different summation order — the flow is bit-identical at the printed
+precision. End-to-end at χ=50, d=2, w=4, L=22: one `HadamardTDVP` sweep went from
+**113 s to 1.66 s** (68×) on the same machine; the Krylov parameters are untouched (with
+cheap maps the 26 applications of an `exponentiate` are no longer the bottleneck). See
+`plan/08_hadamard_tdvp_performance.md` for the full analysis.
+
+## New: lattices with non-uniform per-site dimensions in the sparse MPO route
+
+`OpSum`/`OpTerm`/`MPOHamiltonian` used to require one common local dimension per term and
+per chain: `OpTerm` demanded that all operators of a term be `d×d` with the *same* `d`, and
+`_mpohamiltonian_from_terms` used a single `d` (including for the identity blocks it
+inserts on the gap sites of a long-range term). Both are gone:
+
+- `OpTerm` only requires *square* operators (and accepts heterogeneous tuple element types),
+  so a term may couple sites of different dimensions; the operator/dimension matching is
+  done by `OpSum`, which already validates every operator against its own `ds[pos]`;
+- `_mpohamiltonian_from_terms` now takes the lattice `ds` and builds each `SchurMPOTensor`
+  with the *site's* dimension — including the gap identities of a long-range term, so a
+  term connecting sites of different dimensions across a heterogeneous gap works;
+- `MPOHamiltonian(L, terms...)` carries no lattice and therefore still requires one common
+  dimension (it throws a `DimensionMismatch` pointing at `OpSum(ds)` otherwise), and
+  `MPOHamiltonian(::OpSum)` is the varying-dimension entry point. The term-based
+  counterpart of the `ds` form is `MPOHamiltonian(ds, terms...)`, which validates every
+  operator against its own `ds[pos]`;
+- a site with **no operator support at all** is now a valid idle-identity site: the site's
+  dimension comes from the lattice (`SchurMPOTensor{T}(data, d)`), and since the two
+  identity corners of the Schur form are implicit, its all-scalar block matrix is exact;
+  the "cannot infer phydim" `ArgumentError` only remains for direct sparse-tensor
+  construction without a dimension;
+- fixed the accumulation of two terms into the same block (e.g. two on-site terms on one
+  site): `_add_block` compared a matrix against a scalar (`old == 0`, a `BitMatrix` in a
+  boolean context) and threw a `TypeError`; the scalar case now expands directly.
+
+Verified end-to-end on a mixed spin-1/2 / spin-1 chain (`ds = [2, 3, 2, 3]`, on-site +
+nearest-neighbour + long-range terms): `todense` against an independent `kron` construction
+(1e-12), `MPO(h)`/`tompotensors` round trip, `expectation`, DMRG1/DMRG2 against exact
+diagonalization, TDVP1/TDVP2 one sweep `= exp(-stepsize·H)` on the whole space, and the
+`changebond!`-padded two-site growth — see `test/operators/nonuniform.jl`.
+
+## New: `HadamardTDVP`/`HadamardTDVP2`, the TDVP flow of the pointwise product of two MPS
+
+`src/algorithms/timeevo/hadamardtdvp.jl` adds time evolution for the Hadamard (pointwise)
+product of two MPS chains — the operation TEMPO's `tdvpif` performs when it builds the
+influence functional as the flow `IF = e^H` of the influence operator:
+
+- `HadamardTDVP(; stepsize, ishermitian=false, verbosity)`: one `sweep!` applies the
+  elementwise `z ↦ exp(stepsize·H).*z` of the flow `dz/dτ = H ∘ z`, with the same step-size
+  convention as `TDVP1`/`TDVP2` (`-τ` cools by τ, `-im*τ` evolves real time);
+- `HadamardTDVP2(; stepsize, trunc=DefaultTruncation, ishermitian=false, verbosity)`: the
+  two-site variant. The site pair evolves against the projected *two-site* pointwise
+  generator and is re-split by a truncating SVD, so the bond dimensions are adapted by the
+  update itself — a product / bond-dimension-1 guess grows to the profile the pointwise
+  product needs under the cap `trunc` carries, with no `changebond!` preparation — exactly
+  the `TDVP1`/`TDVP2` pair;
+- `HadamardTDVPCache(H::CanonicalMPS, ψ::CanonicalMPS)`: the three-chain environments
+  `⟨ψ|H|ψ⟩` of the pointwise product (`_updateleft`/`_updateright` of the ALS hadamard
+  machinery; the bra chain is the conjugated state), with `sweep!`/`leftsweep!`/
+  `rightsweep!`/`updateleft!`/`updateright!` like the other caches;
+- the single-site sweeps freeze the bond profile of the guess (`tdvpif`'s preparation
+  applies: zero-pad with `changebond!(ψ; D=D, noise=0)`, whose SVD/`NoTruncation` gauge
+  makes the padded directions orthonormal, and truncate at the end with `canonicalize!`);
+  the two-site sweeps grow it instead and need no preparation.
+
+Two conventions the implementation has to get right, both taken from `tdvpif`:
+
+- only the bra side of the environments is conjugated (the generator's physical index is
+  *shared* with the state's — a broadcast, not a contraction), so the projected generator is
+  generally **not hermitian** and the Krylov driver defaults to Arnoldi;
+- the flow is driven by the generator's *represented value* (`scaling^L·∏tensors`), while
+  the environments contract its site tensors, so a non-unit `scaling(H)` is folded into the
+  local generators as the factor `scaling(H)^L` (what `tdvpif`'s `_absorb_scaling!` does by
+  absorbing it into the tensors); the state's own `scaling` is bookkeeping and flows through
+  untouched.
+
+Accuracy, verified in `test/algorithms/timeevo.jl`: on a manifold that holds the pointwise
+product (the full space of a short chain, or a zero-padded product state) one sweep
+reproduces the elementwise exponential to roundoff, for imaginary, real and complex steps;
+after a two-site sweep has grown the profile the flow is exact to 1e-15, while the growing
+sweep itself leaves the usual O(stepsize) projection remainder; on a restricted manifold
+the sweep realizes the projected flow. Both variants are cross-checked against the MPO
+routes with the diagonal operator `copyphydims(H)` (`TDVP1`/`TDVP2`, agreement to 1e-15).
+
+## Fixed: `TDVP1`/`TDVP2` now fold in the generator's `scaling`
+
+`TDVP1` and `TDVP2` contracted the generator's site tensors only, so a generator carrying
+its norm in `scaling` — anything canonicalized, e.g. a `tomps`-built or `copyphydims`-built
+chain, where `scaling ≠ 1` — was silently evolved as `exp(stepsize·H/scaling^L)`. The
+local generators (single-site, bond and pair maps, for both the MPS and the
+density-operator manifolds) are now multiplied by `scaling(H)^L` whenever the generator
+carries a scaling; plain `MPO`/`MPOHamiltonian` generators have none and are unaffected.
+The state's own `scaling` was already bookkeeping only. The tests check the flow of a
+canonicalized generator against the dense elementwise exponential and against the same
+generator with its scaling absorbed into the tensors.
+
+## New: standard finite-chain models (`src/models.jl`)
+
+`src/models.jl` collects the common one-dimensional Hamiltonians as `MPOHamiltonian`s on a
+finite **open** chain, mirroring InfiniteMPSAlgorithms' `models.jl` (which builds the same
+models on an infinite chain, with the same sign conventions):
+
+- `σx/σy/σz`, `Sx/Sy/Sz`: Pauli and spin-1/2 matrices with element type `T` (default
+  `ComplexF64`; `σy`/`Sy` promote to complex);
+- `heisenberg_hamiltonian(L; J=1, Δ=1, h=0, T)`: XXZ chain with a longitudinal field,
+  `H = J Σ (SˣSˣ + SʸSʸ + Δ SᶻSᶻ) − h Σ Sᶻ` (`Δ = 1` XXX, `Δ = 0` XX);
+- `tfim_hamiltonian(L; J=1, h=1, T)`: transverse-field Ising chain, `H = −J Σ σˣσˣ − h Σ σᶻ`;
+- `fermi_hubbard(L; t=1, U=0, μ=0, T)`: Hubbard chain on the 4-dimensional local space
+  `(|0⟩,|↑⟩,|↓⟩,|↑↓⟩)`, Jordan-Wigner transformed with the modes ordered `↑` before `↓` per
+  site; the parity strings fold into the nearest-neighbour bond terms (the dressed hopping
+  creators are `σ⁺↑⊗σᶻ↓` and `I⊗σ⁺↓`), and no boundary string is needed on an open chain.
+  The tests check the full hopping + `n↑n↓` + `−μn` model against an explicit
+  string construction, and verify the canonical anticommutation relations.
+
+All builders return the sparse Schur form (use `MPO(h)` / `todense(h)` for the dense
+routes); periodic boundaries and longer-range or disordered couplings are assembled by the
+caller from an `OpSum`.
+
+## New: `TDVP2`, the two-site time-dependent variational principle
+
+`TDVP2(; stepsize, trunc=DefaultTruncation, ishermitian=true, verbosity)` joins `TDVP1`
+in `algorithms/timeevo/tdvp.jl` and drives the same `sweep!(env, alg)` interface through
+`DMRGCache` (a `CanonicalMPS` state) and `TDVPCache` (a `CanonicalMPO` state). Where
+`TDVP1` freezes the bond profile of the guess, `TDVP2` updates each neighbouring pair of
+site tensors against the two-site effective generator, re-splits it with a *truncating*
+SVD under `alg.trunc` (singular values absorbed into the sweep direction, so the
+orthogonality center moves with them) and — except at the far edge of a sweep — applies
+the single-site backward half-step on the fresh center, exactly as MPSKit's `TDVP2` does.
+The bond profile therefore needs no preparation: a bond-dimension-1 guess grows its bonds
+as the entanglement builds, up to the cap `trunc` carries (`truncdim(D)`), and is trimmed
+where the spectrum allows. `alg.stepsize` follows the `TDVP1` convention (the complex time
+increment itself, `-τ` for cooling and `-im*τ` for real time).
+
+Like every `sweep!` of the package the guess must be *canonical* (`iscanonical`): the
+environments and the local generators are those of an isometric chain. This is now stated
+in the `TDVP1`/`TDVP2` docstrings, together with the concrete trap —
+`vectorize(infinite_temperature_state(...))` represents the identity exactly but its site
+tensors are the plain identities, so it is not canonical and must be regauged with
+`rightorth!` (SVD, `NoTruncation`, no bond resizing) before the first sweep.
+
+`benchmark/thermalstate/tdvp2_l10.jl` (registered as `tdvp2_l10` in the benchmark runner)
+cools the L = 10, β = 1 model from the bond-dimension-1 infinite-temperature state and
+reports the density-matrix error against exact diagonalization at D = 8/16/32 beside the
+values of MPSKit's `TDVP2(trscheme = truncrank(D))` for the same problem; the two agree to
+the four significant digits shown.
+`benchmark/thermalstate/mpskit_tdvp2.jl` reproduces those MPSKit reference values (run it
+in an environment that has MPSKit; it is not a dependency of the benchmark project).
+
+## `changebond!` returns a right-canonical chain
+
+The resize itself pads or slices the site tensors without regard to the gauge, which left
+the chain non-canonical: the padded blocks of the site tensors are not isometries, so the
+environments that the iterative algorithms build (from a right-canonical guess) were
+inconsistent and the results degraded — e.g. a TDVP1 run from a zero-padded product state
+came out at `1e-5` accuracy instead of machine precision. Both variants (`CanonicalMPS`
+and `CanonicalMPO`) now end with an exact right re-orthogonalization (`rightorth!` with
+`NoTruncation`), so the result is right-canonical with the orthogonality center at site 1:
+every site but the first is right-isometric and all internal Schmidt values are
+initialized, with the overall norm carried by `scaling` (the first site cannot be made
+right-isometric in this convention). Callers no longer need a separate `canonicalize!`
+(or the benchmarks' `restore_gauge!`) after resizing.
+
+## New: `kron(a, b)` / `transpose(h)` for operator chains, `superoperator` built on them
+
+- `Base.kron(a::AbstractMPO, b::AbstractMPO)`: the Kronecker product of two chains of
+  equal length — per site the local Kronecker product on the fused physical space
+  (the legs of `a` the fastest, matching the `vectorize` convention), bond dimensions
+  multiply, `CanonicalMPO` scalings are not folded (data-level convention).
+- `Base.transpose(h::MPO)` / `Base.transpose(h::CanonicalMPO)`: the operator transpose
+  (physical legs of every site tensor exchanged; the canonical `scaling` is kept).
+- `superoperator(h, side)` now takes the side positionally (`superoperator(h, :left)`)
+  beside the previous keyword form and is constructed from the Kronecker products with
+  the identity chain: `superoperator(h, :left) = kron(h, I)`,
+  `superoperator(h, :right) = kron(I, transpose(h))`. The old data-level builder
+  `_superoperator_data` is gone (the observable behavior — bond structure, `scaling`
+  handling, `ArgumentError` on a bad side — is unchanged and pinned by the tests).
+
+## Fixed: `expectation` / `expectationvalue` with a scaled `CanonicalMPO` operator
+
+`expectation(ψA, h, ψB)`, `expectation(h, ρ)` and both `expectationvalue(h, …)` methods
+silently dropped `scaling(h)^L` when `h` was a `CanonicalMPO` (a plain `MPO` carries its
+scale in the data and was unaffected). The factor is now included, matching the
+documented contract; in `expectationvalue` the operator scale is part of the represented
+value, while the `ψ`/`ρ` scalings still cancel between numerator and denominator.
+
+## Redesigned: `TDVPCache` — one environment stack, left action of a generator MPO
+
+`MPOTDVPCache` is renamed `TDVPCache` (exported under the new name) and now serves both
+manifolds with a **single** environment stack, because the algorithm applies the generator
+from the left only: `sweep!` applies `exp(stepsize·H)`.
+
+- `state::CanonicalMPS` — the ordinary MPS TDVP1, for real and imaginary time alike.
+  `estorage` is the `⟨ψ|h|ψ⟩` stack and the sweeps are exactly those of a `DMRGCache`.
+- `state::CanonicalMPO` — cooling of a density operator by the left multiplication
+  `exp(-τ·H)·ρ`. This is meaningful in **imaginary time only**: from the
+  infinite-temperature state `ρ₀ ∝ I` it cools to the Gibbs state,
+  `exp(-τ·H)·I ∝ exp(-τ·H)`, i.e. `β_eff = n·τ` after `n` steps — the same `β_eff` as the
+  symmetric two-sided cooling `exp(-τ/2·h)·ρ₀·exp(-τ/2·h)` at half the cost per site
+  update.
+
+The state field is `state` (was `rho`) and the type parameter is
+`V <: Union{CanonicalMPO,CanonicalMPS}`. The sweeps (`_tdvp_leftsweep!` /
+`_tdvp_rightsweep!`) are shared by `DMRGCache` and `TDVPCache`; only the local generator
+map, the gauge groups and the environment transfer dispatch on the state, while the
+complement-space map (the shared `c_prime`) and the gauge moves (`_gauge_left` /
+`_gauge_right`) are common to both manifolds.
+
+Real-time evolution of a density operator is **not** `exp(-i·t·H)·ρ` but the two-sided
+`exp(-i·t·H)·ρ·exp(+i·t·H)`, which this cache does not implement (it stores the
+left-action environment only). Vectorize the state and use a `DMRGCache` on the
+superoperator instead,
+`DMRGCache(superoperator(h, :left) - superoperator(h, :right), vectorize(ρ))`; the
+symmetric cooling is the `(superoperator(h, :left) + superoperator(h, :right)) / 2`
+generator.
+
+## Changed: `TDVP1` stepsize is the complex time increment itself
+
+The sweeps apply `exp(stepsize·H)` directly (no hidden `-im` factor), so the caller picks
+the flow through the complex stepsize:
+
+- real-time evolution by `τ`: `TDVP1(stepsize = -im*τ)` — e.g. `-im*0.1`;
+- imaginary-time evolution (cooling) by `τ`: `TDVP1(stepsize = -τ)` — e.g. `-0.1`.
+
+This replaces the previous convention, under which a real stepsize meant real time and
+`-im*τ` meant imaginary time; every in-repo call site has been converted (the numerical
+evolution is unchanged, only the spelling of `stepsize`).
+
+## Removed: `recalculate!`
+
+The environment-stack rebuild `recalculate!(env, ψ)` is gone; build a fresh cache
+(`DMRGCache(h, ψ)`) instead.
+
+## `changebond!` only for `CanonicalMPS` / `CanonicalMPO`
+
+The public `changebond!` now dispatches on `CanonicalMPS` and `CanonicalMPO` only (the
+`CanonicalMPO` variant re-canonicalizes without truncation after the bond refit, like
+the MPS variant). All overloads on caches (`changebond!(env::DMRGCache)`) are deleted;
+the raw bond-profile refit survives as the internal `_changebond!` (used by `seq2seq!`
+to prepare plain-MPO initial guesses).
+
+## Dense conversion: `order` keyword renamed to `:msb` / `:lsb`
+
+`todense`, `tomps` and `tompo` take an `order` keyword selecting the endianness of the
+merged physical index. The values `:big` / `:little` were renamed to `:msb` / `:lsb`
+(most-/least-significant-first); the default behavior is unchanged (`:msb`).
+
+- `order = :msb` — **big-endian / Kronecker order** (default): site 1 is the most
+  significant (slowest) index, i.e. the dense object reads like the `kron` product
+  `v₁ ⊗ v₂ ⊗ ⋯ ⊗ v_L` of the local factors site by site — the convention of most
+  quantum-information texts (endian terminology) and of TT/MPS literature built on
+  `kron` (Kronecker terminology).
+- `order = :lsb` — **little-endian / column-major flattening**: site 1 is the least
+  significant (fastest) index — the natural reading of `vec(reshape(v, ds...))` in
+  Julia's column-major memory layout, which is also what a left-to-right TT-SVD sweep
+  produces natively.
+
+The docstrings of `todense` (MPS and MPO methods), `tomps` and `tompo` spell out both
+readings.
+
+## New: `Base.sum(::CanonicalMPS)`
+
+Sum of all amplitudes `Σ_{i₁,…,i_L} ψ(i₁,…,i_L)` of the represented state (all
+physical indices contracted with all-ones vectors), including the `scaling^L` factor.
+
+## New: `copyphydims(::CanonicalMPS) -> CanonicalMPO`
+
+Reinterprets an MPS as an operator chain on the same bond dimension: every site tensor
+`A[aL, p, aR]` becomes the physical-space diagonal `W[aL, po, aR, pi] = A[aL, po, aR]·δ_{po,pi}`
+(the physical dimensions are copied to both the bra and the ket side). Applying the
+result to another MPS with the same bond structure reproduces the element-wise
+(Hadamard) product:
+
+```julia
+copyphydims(ψA) * ψB == ⊙(ψA, ψB)
+```
+
+so a Hadamard product between chains of matching bond dimensions can equivalently be
+evaluated as an MPO·MPS multiplication. The `scaling` of `ψ` is carried over; the
+Schmidt values of the output are unset (the MPS spectrum does not satisfy the MPO
+canonical conditions).
+
+## New: `swap!` for `CanonicalMPO`, `permute!` / `permuted` for chains
+
+- `swap!(ρ::CanonicalMPO, i; trunc)` exchanges the `(p_out, p_in)` content of the
+  neighboring sites `i`, `i+1` — the operator-space analog of the MPS `swap!`
+  (Hastings fold–SVD–back-project update, aligned with TEMPO/GTEMPO). The
+  right-canonical form and the recorded spectra are preserved (up to the truncation
+  error).
+- `permute!(x, perm; kwargs...)` reorders the site contents of an MPS/MPO chain in
+  place so that afterwards site `i` carries the former content of site `perm[i]`
+  (matching `Base.permute!` on plain vectors), as the sequence of neighboring swaps
+  given by `permutation2swaps`.
+- `permuted(x, perm; kwargs...)` is the non-mutating counterpart (returns a new chain).
+
+## Scaling-safe arithmetic for operator chains
+
+The strict arithmetic primitives (`_mul_data`, `_plus_data`, `_apply_data`) now operate
+on the raw data only; dispatch wrappers attach the external `scaling` so that exported
+operations are correct for `CanonicalMPO` operands:
+
+- `*(hA, hB)`: the result carries the product of the represented chains — a
+  `CanonicalMPO` result with `scaling(hA)·scaling(hB)` when both factors are canonical,
+  and the canonical factor's scale otherwise (previously the scale of a `CanonicalMPO`
+  factor was silently dropped).
+- `+(hA, hB)`, `-(hA, hB)`: the `scaling` of `CanonicalMPO` summands is folded into the
+  data (canonical + canonical returns a `CanonicalMPO` with `scaling = 1`, mirroring
+  the `CanonicalMPS` sum; mixed sums return a plain `MPO` carrying the folded scale).
+- `*(h::AbstractMPO, ψ::CanonicalMPS)`: a new `*(h::CanonicalMPO, ψ)` method carries
+  `scaling(h)·scaling(ψ)` into the result (previously `h`'s scale was dropped).
+- `MPOHamiltonian` mixings route through the same wrappers, so e.g.
+  `MPOHamiltonian * CanonicalMPO` now preserves the canonical scale.
+- `mult` (SVD route) builds on the scaling-aware product: the represented value of the
+  result is exact for scaled canonical operands. Because the canonicalization sweep
+  keeps the data normalized (data-normalized gauge), the raw data norms of the exact
+  product are absorbed into the output's `scaling` field — the represented value is the
+  contract, not the bare operand-scale product.
+
+Scalar multiplication (`*`, `/`, unary `-`) was already scaling-aware via the
+gauge-preserving `lmul!`. Scale-aware by construction and unchanged: `dot`, `norm`,
+`tr`, `distance`, `fidelity`/`infidelity`, `todense`, `expectation`, `expectationvalue`,
+`vectorize`/`devectorize`.
+
+## `superoperator` carries the `CanonicalMPO` scaling
+
+`superoperator` dispatches on the operand type: `MPO` / `MPOHamiltonian` inputs return a
+plain `MPO` (they carry no external scale), while a `CanonicalMPO` input returns a
+`CanonicalMPO` whose `scaling` field carries the input's external scale — the
+represented superoperator is linear in the represented `h`, so the routes
+`devectorize(superoperator(h₁; :left) * vectorize(h₂))` and
+`devectorize(superoperator(h₂; :right) * vectorize(h₁))` reproduce the represented
+product `h₁·h₂` without any manual scale bookkeeping. The scale-free data-level builder
+is the internal `_superoperator_data` (underscore-prefixed, per the convention that
+data-only internals are explicitly marked).
+
+## Follow-up interface refinements
+
+- `permuted` renamed to `permute`: the non-mutating chain permutation now extends the
+  tensor-level `permute` of the tensorops layer (dispatch on the chain argument).
+- `copyphydims`: the redundant `unset_svectors!` was dropped — a freshly constructed
+  `CanonicalMPO` has uninitialized Schmidt values by construction.
+- `DefaultTruncation` now keeps at least one singular value (`add_back = 1`), avoiding
+  degenerate zero-dimension bonds when an entire spectrum falls below the cutoff. The
+  definition is pinned by a test.
+- `OpSum`: the lattice `ds` is stored as a plain `Vector{Int}` (no lattice-length type
+  parameter); the terms stay validated against `ds` on construction / `push!`.
+
+## New: `DMRG2` — the two-site variational engine for all iterative arithmetics
+
+`DMRG2(; maxiter, tol, trunc, verbosity)` joins `DMRG1` in `algdefs.jl` as an accepted
+algorithm of every iterative entry point: `mult` (MPO·MPS and MPO·MPO),
+`mult!`, `add`, `compress`, `hadamard`, `linsolve` (and hence every route built on
+them). Instead of single-site ALS updates with a fixed bond profile, the two-site
+engine optimizes neighboring site pairs jointly and re-splits them by a truncating SVD
+under `alg.trunc`, so the bond dimension adapts during the sweeps — growth where the
+environment demands it, truncation where the scheme caps it. The initial guesses are
+drawn with the bond cap carried by `alg.trunc` (`_guess_bond`, falling back to
+`Defaults.D`).
+
+Implementation notes (src/algorithms/arithmetics/dmrg2.jl):
+
+- the singular values of the two-site re-split are absorbed into the sweep direction
+  WITHOUT normalization (as in the single-site ALS gauge moves): the data keeps the
+  scale of the local targets through the sweeps, and the drivers only attach the
+  operand external scales through the `scaling` field (like DMRG1). The one exception
+  is `add`, which restores the physical scale of the (cancellation-prone) sum from the
+  problem's KKT eigenvalue β = Σ_n ⟨bra|ket_n⟩ / ⟨bra|bra⟩ (`setscaling!` first, the
+  folding `lmul!` second);
+- the per-pair loss `norm(target)` is monotone in processing time for exact local
+  solves; a `NoTruncation` small-system testset pins the local machinery (targets,
+  re-splits, sample/environment bookkeeping) independently of truncation effects;
+- `mult(hA::MPOHamiltonian, …, ::DMRG2)` entry points expand to the dense MPO layer
+  (the out-of-place route), as with the other engines.
+
+## `seq2seq` gains a dedicated algorithm type `Seq2Seq`
+
+`seq2seq` / `seq2seq!` / `init_seq2seqcache` now take their configuration through the
+dedicated algorithm type `Seq2Seq(; maxiter, tol, D, α, verbosity)` (positional
+argument, mirroring `ALSRecon`/`DMRG1` usage). The Hilbert-Schmidt ridge strength `α`
+moved from the `α` keyword argument into the algorithm definition; the ridge itself
+(the seq2seq regularization of the local normal equations, excluded from the reported
+loss) is unchanged. The default-arg forms `seq2seq(xs, ys)` and `seq2seq(xs, ys, Seq2Seq(D=4))`
+replace the previous `seq2seq(xs, ys; α)` / DMRG1-based signatures.
+
+The new `nadd`/`nbuffer` fields drive the adaptive data-enrichment loop of the
+oracle-based entry point `seq2seq(pairfun, dxs, dys, alg)` (the seq2seq analog of
+ALSRecon's sample enrichment): alternate the inner ALS fit on the current training
+set with prediction-error-driven pair additions — each round evaluates the relative
+prediction error on `nbuffer` fresh random inputs and queries the oracle for the
+targets of the `nadd` worst inputs. Stops on `maxerr < alg.tol` or `alg.maxiter`
+rounds; returns `(W, info)` with `(loss, maxerr, npairs, rounds)`.

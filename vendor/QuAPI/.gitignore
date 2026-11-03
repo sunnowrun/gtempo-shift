@@ -1,0 +1,5 @@
+.DS_Store
+*.pdf
+docs/build/
+Manifest.toml
+bugrepots/

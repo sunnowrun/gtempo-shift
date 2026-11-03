@@ -1,0 +1,11 @@
+# local Julia depots (package server caches)
+.depot/
+.julia-depot/
+.julia-depool/
+
+# Julia manifest: resolved dependency lock file, regenerated locally via `Pkg.update()`
+Manifest.toml
+debug/
+
+# benchmark: third-party packages, run artifacts and local logs
+benchmark/

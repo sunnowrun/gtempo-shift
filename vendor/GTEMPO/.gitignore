@@ -1,0 +1,9 @@
+.trae
+.DS_Store
+*.pdf
+data
+result
+Manifest.toml
+CVTemporaryFiles
+docs/build
+osee

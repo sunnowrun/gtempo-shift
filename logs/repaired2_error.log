@@ -1,0 +1,90 @@
+ArgumentError: only strict MPOTensor is allowed
+Stacktrace:
+  [1] check_a_b
+    @ ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/mpo/mpohamiltonian/schurmpo/exponentialdecay.jl:66 [inlined]
+  [2] #ExponentialDecayTerm#47
+    @ ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/mpo/mpohamiltonian/schurmpo/exponentialdecay.jl:19 [inlined]
+  [3] ExponentialDecayTerm
+    @ ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/mpo/mpohamiltonian/schurmpo/exponentialdecay.jl:17 [inlined]
+  [4] expand_decayterm(x::GTEMPO.GenericDecayTerm{Z2Tensors.TensorMap{Float64, 2, 2, Vector{Float64}, Z2Tensors.FusionBlockStructure{2, 2, 4}}, Z2Tensors.TensorMap{Float64, 1, 1, Vector{Float64}, Z2Tensors.FusionBlockStructure{1, 1, 2}}, Z2Tensors.TensorMap{Float64, 2, 2, Vector{Float64}, Z2Tensors.FusionBlockStructure{2, 2, 4}}, Vector{ComplexF64}, Float64}; len::Nothing, alg::ExpExp.OverDeterminedProny)
+    @ GTEMPO ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/mpo/mpohamiltonian/schurmpo/generaldecay.jl:58
+  [5] expand_decayterm
+    @ ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/mpo/mpohamiltonian/schurmpo/generaldecay.jl:48 [inlined]
+  [6] _vertex_shifted_parts(corr::QuAPI.CorrelationMatrix{ComplexF64}, alg::ExpExp.OverDeterminedProny, kind::Symbol)
+    @ GTEMPO ./none:15
+  [7] _ti_mpotensor_shifted(corr::QuAPI.CorrelationMatrix{ComplexF64}, alg::ExpExp.OverDeterminedProny, kind::Symbol)
+    @ GTEMPO ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/influencefunctional/ttiif/util.jl:87
+  [8] #_influencefunctional_util##14
+    @ ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/influencefunctional/exact_ttiif/realtime.jl:34 [inlined]
+  [9] iterate
+    @ ./generator.jl:48 [inlined]
+ [10] _collect(c::UnitRange{Int64}, itr::Base.Generator{UnitRange{Int64}, GTEMPO.var"#_influencefunctional_util##14#_influencefunctional_util##15"{GTEMPO.RealGrassmannLattice{GTEMPO.A1Ā1a1ā1B1B̄1b1b̄1}, QuAPI.RealCorrelationFunction{QuAPI.CorrelationMatrix{ComplexF64}}, GTEMPO.ExactTTIIF{ExpExp.OverDeterminedProny, GTEMPO.SVDCompression{Z2Tensors.TruncateDimCutoff}}, NTuple{4, Tuple{Symbol, Symbol}}, NTuple{4, Tuple{Symbol, Symbol}}, NTuple{4, QuAPI.CorrelationMatrix{ComplexF64}}}}, ::Base.EltypeUnknown, isz::Base.HasShape{1})
+    @ Base ./array.jl:810
+ [11] collect_similar
+    @ ./array.jl:732 [inlined]
+ [12] map
+    @ ./abstractarray.jl:3372 [inlined]
+ [13] _influencefunctional_util(lattice::GTEMPO.RealGrassmannLattice{GTEMPO.A1Ā1a1ā1B1B̄1b1b̄1}, corr::QuAPI.RealCorrelationFunction{QuAPI.CorrelationMatrix{ComplexF64}}, alg::GTEMPO.ExactTTIIF{ExpExp.OverDeterminedProny, GTEMPO.SVDCompression{Z2Tensors.TruncateDimCutoff}})
+    @ GTEMPO ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/influencefunctional/exact_ttiif/realtime.jl:32
+ [14] _influencefunctional(lattice::GTEMPO.RealGrassmannLattice{GTEMPO.A1Ā1a1ā1B1B̄1b1b̄1}, corr::QuAPI.RealCorrelationFunction{QuAPI.CorrelationMatrix{ComplexF64}}, alg::GTEMPO.ExactTTIIF{ExpExp.OverDeterminedProny, GTEMPO.SVDCompression{Z2Tensors.TruncateDimCutoff}}; band::Int64)
+    @ GTEMPO ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/influencefunctional/exact_ttiif/realtime.jl:19
+ [15] _influencefunctional
+    @ ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/influencefunctional/exact_ttiif/realtime.jl:1 [inlined]
+ [16] hybriddynamics!(gmps::GTEMPO.GrassmannMPS{Z2Tensors.TensorMap{ComplexF64, 2, 1, Vector{ComplexF64}, Z2Tensors.FusionBlockStructure{2, 1, 3}}, Z2Tensors.DiagonalTensorMap{Float64, Vector{Float64}}}, lattice::GTEMPO.RealGrassmannLattice{GTEMPO.A1Ā1a1ā1B1B̄1b1b̄1}, corr::QuAPI.RealCorrelationFunction{QuAPI.CorrelationMatrix{ComplexF64}}, alg::GTEMPO.ExactTTIIF{ExpExp.OverDeterminedProny, GTEMPO.SVDCompression{Z2Tensors.TruncateDimCutoff}}; band::Int64)
+    @ GTEMPO ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/influencefunctional/exact_ttiif/exact_ttiif.jl:32
+ [17] hybriddynamics!
+    @ ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/influencefunctional/exact_ttiif/exact_ttiif.jl:30 [inlined]
+ [18] #hybriddynamics#415
+    @ ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/influencefunctional/exact_ttiif/exact_ttiif.jl:14 [inlined]
+ [19] hybriddynamics(lattice::GTEMPO.RealGrassmannLattice{GTEMPO.A1Ā1a1ā1B1B̄1b1b̄1}, corr::QuAPI.RealCorrelationFunction{QuAPI.CorrelationMatrix{ComplexF64}}, alg::GTEMPO.ExactTTIIF{ExpExp.OverDeterminedProny, GTEMPO.SVDCompression{Z2Tensors.TruncateDimCutoff}})
+    @ GTEMPO ~/Agent-workspace/gc-ask/gtempo-shift/vendor/GTEMPO/src/influencefunctional/exact_ttiif/exact_ttiif.jl:12
+ [20] (::Main.RepairedTTI.var"#run##0#run##1"{GTEMPO.ExactTTIIF{ExpExp.OverDeterminedProny, GTEMPO.SVDCompression{Z2Tensors.TruncateDimCutoff}}, Z2Tensors.TruncateDimCutoff})(io::IOStream)
+    @ Main.RepairedTTI ~/Agent-workspace/gc-ask/gtempo-shift/scripts/repaired_tti.jl:45
+ [21] open(::Main.RepairedTTI.var"#run##0#run##1"{GTEMPO.ExactTTIIF{ExpExp.OverDeterminedProny, GTEMPO.SVDCompression{Z2Tensors.TruncateDimCutoff}}, Z2Tensors.TruncateDimCutoff}, ::String, ::Vararg{String}; kwargs::@Kwargs{})
+    @ Base ./io.jl:412
+ [22] open
+    @ ./io.jl:409 [inlined]
+ [23] run
+    @ ~/Agent-workspace/gc-ask/gtempo-shift/scripts/repaired_tti.jl:38 [inlined]
+ [24] #65
+    @ ./REPL[14]:1 [inlined]
+ [25] redirect_stdio(f::var"#65#66"; stdin::Nothing, stderr::IOStream, stdout::IOStream)
+    @ Base ./stream.jl:1448
+ [26] redirect_stdio
+    @ ./stream.jl:1411 [inlined]
+ [27] (::var"#63#64")(io::IOStream)
+    @ Main ./REPL[14]:1
+ [28] open(::var"#63#64", ::String, ::Vararg{String}; kwargs::@Kwargs{})
+    @ Base ./io.jl:412
+ [29] open(::Function, ::String, ::String)
+    @ Base ./io.jl:409
+ [30] top-level scope
+    @ REPL[14]:1
+ [31] __repl_entry_eval_expanded_with_loc(mod::Module, ast::Any, toplevel_file::Ref{Ptr{UInt8}}, toplevel_line::Ref{Int32})
+    @ REPL ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:301
+ [32] toplevel_eval_with_hooks(mod::Module, ast::Any, toplevel_file::Any, toplevel_line::Any)
+    @ REPL ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:308
+ [33] toplevel_eval_with_hooks(mod::Module, ast::Any, toplevel_file::Any, toplevel_line::Any) (repeats 2 times)
+    @ REPL ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:312
+ [34] toplevel_eval_with_hooks
+    @ ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:305 [inlined]
+ [35] eval_user_input(ast::Any, backend::REPL.REPLBackend, mod::Module)
+    @ REPL ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:330
+ [36] repl_backend_loop(backend::REPL.REPLBackend, get_module::Function)
+    @ REPL ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:452
+ [37] start_repl_backend(backend::REPL.REPLBackend, consumer::Any; get_module::Function)
+    @ REPL ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:427
+ [38] start_repl_backend
+    @ ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:424 [inlined]
+ [39] run_repl(repl::REPL.AbstractREPL, consumer::Any; backend_on_current_task::Bool, backend::Any)
+    @ REPL ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:653
+ [40] run_repl(repl::REPL.AbstractREPL, consumer::Any)
+    @ REPL ~/julia-1.12.6/share/julia/stdlib/v1.12/REPL/src/REPL.jl:639
+ [41] run_std_repl(REPL::Module, quiet::Bool, banner::Symbol, history_file::Bool)
+    @ Base ./client.jl:478
+ [42] run_main_repl(interactive::Bool, quiet::Bool, banner::Symbol, history_file::Bool)
+    @ Base ./client.jl:499
+ [43] repl_main
+    @ ./client.jl:586 [inlined]
+ [44] _start()
+    @ Base ./client.jl:561

@@ -1,0 +1,83 @@
+# ==========================================================================
+# Common interface tests: exponential_expansion, expansion_error, stepsize
+# ==========================================================================
+
+@testset "exponential_expansion" begin
+    atol = 1.0e-10
+    for ydata in real_exp_data()
+        for alg in (OverDeterminedProny(n=20, tol=atol), DeterminedProny(n=20, tol=atol))
+            xs, lambdas = exponential_expansion(ydata, alg)
+            @test expansion_error(ydata, xs, lambdas) / norm(ydata) < atol
+        end
+    end
+end
+
+@testset "exponential_expansion: function input" begin
+    ydata = [0.5^k + 2 * 0.7^k for k in 1:20]
+    atol = 1.0e-8
+    xs, lambdas = exponential_expansion(k -> 0.5^k + 2 * 0.7^k, 20, OverDeterminedProny(n=20, tol=atol))
+    @test expansion_error(ydata, xs, lambdas) / norm(ydata) < atol
+    xs, lambdas = exponential_expansion(k -> 0.5^k + 2 * 0.7^k, 20, alg=OverDeterminedProny(n=20, tol=atol))
+    @test expansion_error(ydata, xs, lambdas) / norm(ydata) < atol
+end
+
+@testset "exponential_expansion: stepsize" begin
+    ydata = [0.5^k + 2 * 0.7^k for k in 1:20]
+    stepsize = 3
+    atol = 1.0e-8
+    xs, lambdas = exponential_expansion(ydata, OverDeterminedProny(n=20, tol=atol, stepsize=stepsize))
+    @test expansion_error(ydata, xs, lambdas) / norm(ydata) < atol
+end
+
+@testset "exponential_expansion: identically-zero data" begin
+    # degenerate input: the Hankel/SVD based fits break down on it, every algorithm
+    # must return the single trivial zero term instead of NaN coefficients or a throw
+    for alg in (OverDeterminedProny(n=20, tol=1.0e-10), DeterminedProny(n=20, tol=1.0e-10),
+                MatrixPencil(n=20, tol=1.0e-10), LeastSquareProny(n=20, tol=1.0e-10),
+                MatrixPencil(n=20, tol=1.0e-10, stepsize=nothing))
+        xs, lambdas = exponential_expansion(zeros(20), alg)
+        @test length(xs) == 1 && iszero(xs[1]) && iszero(lambdas[1])
+    end
+end
+
+@testset "exponential_expansion: powerlaw and multi-exponential data" begin
+    atol = 1.0e-5
+    # power-law decay f(x) = 1.3 * x^α
+    for alpha in (-2.0, -2.5, -3.0)
+        ydata = [1.3 * x^alpha for x in 1:100]
+        for alg in (OverDeterminedProny(n=20, tol=atol), DeterminedProny(n=20, tol=atol))
+            xs, lambdas = exponential_expansion(ydata, alg)
+            @test expansion_error(ydata, xs, lambdas) / norm(ydata) < atol
+        end
+    end
+    # sum of 4 real exponentials, long sequence
+    ydata = [1.3 * 0.7^x + 0.7 * 0.5^x - 1.1 * 0.8^x + 0.1 * 0.95^x for x in 1:500]
+    xs, lambdas = exponential_expansion(ydata, OverDeterminedProny(n=20, tol=atol))
+    @test expansion_error(ydata, xs, lambdas) / norm(ydata) < atol
+    for stepsize in 2:6
+        xs, lambdas = exponential_expansion(ydata, OverDeterminedProny(n=20, stepsize=stepsize, tol=atol))
+        @test expansion_error(ydata, xs, lambdas) / norm(ydata) < atol
+    end
+    # sum of 4 complex exponentials
+    ydata = [(1.3+0.2im) * (0.7+0.3im)^x + (0.7+1.1im) * (0.5+0.1im)^x -
+             (1.1-0.3im) * (0.8-0.5im)^x + (0.1-0.2) * (0.95+0.2im)^x for x in 1:500]
+    xs, lambdas = exponential_expansion(ydata, OverDeterminedProny(n=20, tol=atol))
+    @test expansion_error(ydata, xs, lambdas) / norm(ydata) < atol
+end
+
+@testset "expansion_error: concatenated form" begin
+    ydata = [0.5^k for k in 1:10]
+    err = expansion_error(ydata, vcat([1.0], [0.5]))
+    @test err ≈ 0 atol = 1.0e-12
+end
+
+@testset "complex data: common interface" begin
+    atol = 1.0e-8
+    ydata = complex_exp_data()
+    for alg in (OverDeterminedProny(n=10, tol=atol),
+                DeterminedProny(n=10, tol=atol),
+                MatrixPencil(n=10, tol=atol))
+        xs, lambdas = exponential_expansion(ydata, alg)
+        @test expansion_error(ydata, xs, lambdas) / norm(ydata) < atol
+    end
+end

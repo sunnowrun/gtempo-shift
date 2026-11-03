@@ -1,0 +1,6 @@
+vendor/ExpExp 8c1c69766c3289d89b3006156464790faedc2aa5 2026-09-15T16:55:53+08:00 Handle identically-zero input in exponential_expansion
+vendor/FiniteMPSAlgorithms ab117c6e09182699f450eb250224bebe0e928c9b 2026-10-27T11:12:45+08:00 PairOpTerm: uniform channel propagator m and per-site on-site operators
+vendor/GTEMPO 2ef6a2bfc5d01be5532ecfac517eb1f2b870f622 2026-11-03T18:29:16+08:00 test: disambiguate branches via GTEMPO (ImpurityModelBase exports it too)
+vendor/ImpurityModelBase 8123f7be5a2a2e3684a9a739d83bc03dac144cd4 2026-11-03T14:56:44+08:00 contour Green's functions: Keldysh/Kadanoff/Matsubara containers
+vendor/QuAPI 16f30252df564dcad934aeee3a788ff02b2ebccb 2026-11-03T18:28:47+08:00 contourindex: redefine the BCS getindex as directed IF-exponent coefficients
+vendor/Z2Tensors 8cf8bd6fbc631eae491222e45ef9470698a09ba4 2026-10-19T09:05:38+08:00 Reuse precomputed structure in tensoralloc

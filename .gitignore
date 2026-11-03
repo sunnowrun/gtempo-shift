@@ -1,0 +1,8 @@
+# Runtime caches and temporary publication files; research logs remain tracked.
+/depot/
+/tmp/
+/mplconfig/
+/.publication/
+__pycache__/
+*.py[cod]
+.DS_Store
